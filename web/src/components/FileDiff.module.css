@@ -1,0 +1,183 @@
+.file {
+  /* overflow: clip (not hidden) rounds the corners without breaking position: sticky. */
+  overflow: clip;
+  border-width: 1px;
+  border-radius: var(--radius);
+  background: var(--card);
+  content-visibility: auto;
+  scroll-margin-top: calc(var(--header-height) + 0.75rem);
+}
+
+.header {
+  position: sticky;
+  top: var(--header-height);
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 2.75rem;
+  padding: 0.375rem 0.75rem 0.375rem 0.5rem;
+  border-bottom-width: 1px;
+  background: var(--muted);
+}
+
+.path {
+  min-width: 0;
+  overflow: hidden;
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  direction: rtl;
+  text-align: left;
+}
+
+.stats {
+  display: flex;
+  gap: 0.375rem;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+}
+
+.additions {
+  color: var(--diff-add);
+}
+
+.deletions {
+  color: var(--diff-del);
+}
+
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-left: auto;
+}
+
+.viewed {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.8125rem;
+  cursor: pointer;
+  user-select: none;
+}
+
+.fileComments {
+  display: grid;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  border-bottom-width: 1px;
+}
+
+.notice {
+  padding: 1rem;
+  color: var(--muted-foreground);
+  text-align: center;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  line-height: 1.25rem;
+}
+
+.dragging {
+  user-select: none;
+}
+
+.numCol {
+  width: 3.5rem;
+}
+
+.hunk td {
+  padding: 0.25rem 0.75rem;
+  background: var(--diff-hunk-bg);
+  color: var(--muted-foreground);
+  white-space: pre;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.num {
+  position: relative;
+  padding: 0 0.5rem;
+  color: var(--muted-foreground);
+  text-align: right;
+  vertical-align: top;
+  user-select: none;
+}
+
+.code {
+  padding: 0 0.75rem 0 0.25rem;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  tab-size: 4;
+}
+
+.prefix {
+  display: inline-block;
+  width: 1.25ch;
+  user-select: none;
+  color: var(--muted-foreground);
+}
+
+.add {
+  background: var(--diff-add-bg);
+}
+.add .num {
+  background: var(--diff-add-gutter);
+}
+
+.del {
+  background: var(--diff-del-bg);
+}
+.del .num {
+  background: var(--diff-del-gutter);
+}
+
+.line.selected,
+.line.selected .num {
+  background: var(--diff-selected-bg);
+}
+
+.plus {
+  position: absolute;
+  top: 0.125rem;
+  left: 0.25rem;
+  display: grid;
+  place-items: center;
+  width: 1rem;
+  height: 1rem;
+  border-radius: 4px;
+  background: var(--primary);
+  color: var(--primary-foreground);
+  opacity: 0;
+  transform: scale(0.9);
+  transition:
+    opacity 0.1s,
+    transform 0.1s;
+}
+
+.line:hover .plus,
+.plus:focus-visible,
+.selected .plus {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.commentRow td {
+  padding: 0.5rem 0.75rem 0.5rem 7.25rem;
+  border-block-width: 1px;
+  background: var(--background);
+}
+
+.stack {
+  display: grid;
+  gap: 0.5rem;
+  max-width: 48rem;
+}

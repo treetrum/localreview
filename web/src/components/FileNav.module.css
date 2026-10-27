@@ -1,0 +1,151 @@
+.nav {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.toolbar {
+  display: flex;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  border-bottom-width: 1px;
+}
+
+.search {
+  position: relative;
+  display: flex;
+  flex: 1;
+  align-items: center;
+  min-width: 0;
+}
+
+.searchIcon {
+  position: absolute;
+  left: 0.625rem;
+  color: var(--muted-foreground);
+  pointer-events: none;
+}
+
+/* Doubled up so it beats the Input primitive regardless of stylesheet order. */
+.search .searchInput {
+  height: 2rem;
+  padding-right: 4rem;
+  padding-left: 2rem;
+}
+
+.matches {
+  position: absolute;
+  right: 1.875rem;
+  color: var(--muted-foreground);
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}
+
+.clear {
+  position: absolute;
+  right: 0.375rem;
+  display: grid;
+  place-items: center;
+  width: 1.25rem;
+  height: 1.25rem;
+  border-radius: 4px;
+  color: var(--muted-foreground);
+}
+
+.clear:hover {
+  background: var(--accent);
+  color: var(--foreground);
+}
+
+.empty {
+  padding: 1rem;
+  color: var(--muted-foreground);
+  text-align: center;
+}
+
+.tree,
+.list {
+  --indent: 0.625rem;
+  padding: 0.5rem;
+  overflow-y: auto;
+}
+
+.dir,
+.file {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  width: 100%;
+  height: 1.875rem;
+  padding: 0 0.5rem 0 calc(0.5rem + var(--depth, 0) * var(--indent));
+  border-radius: calc(var(--radius) - 4px);
+  font-size: 0.8125rem;
+  text-align: left;
+}
+
+.dir {
+  color: var(--muted-foreground);
+}
+
+.dir svg {
+  flex-shrink: 0;
+}
+
+/* Line files up with sibling folder icons rather than chevrons. */
+.tree .file {
+  padding-left: calc(0.5rem + 14px + 0.375rem + var(--depth, 0) * var(--indent));
+}
+
+.dir:hover,
+.file:hover {
+  background: var(--accent);
+  color: var(--accent-foreground);
+}
+
+.name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dirName {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--muted-foreground);
+  font-size: 0.75rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  direction: rtl;
+  flex: 1 1 0;
+  text-align: left;
+}
+
+.viewedFile .name {
+  color: var(--muted-foreground);
+}
+
+.meta {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 0.25rem;
+  margin-left: auto;
+}
+
+.count {
+  min-width: 1.125rem;
+  padding: 0 0.3rem;
+  border-radius: 999px;
+  background: var(--primary);
+  color: var(--primary-foreground);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  line-height: 1.125rem;
+  text-align: center;
+}
+
+.tick {
+  color: var(--diff-add);
+}

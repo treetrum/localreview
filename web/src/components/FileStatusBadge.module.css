@@ -1,0 +1,32 @@
+.badge {
+  font-family: var(--font-mono);
+}
+
+.compact {
+  justify-content: center;
+  width: 1.125rem;
+  height: 1.125rem;
+  padding: 0;
+  font-size: 0.6875rem;
+}
+
+.added,
+.untracked {
+  background: var(--diff-add-bg);
+  color: var(--diff-add);
+}
+
+.deleted {
+  background: var(--diff-del-bg);
+  color: var(--diff-del);
+}
+
+.modified {
+  background: color-mix(in oklch, oklch(0.7 0.15 75) 15%, transparent);
+  color: oklch(0.6 0.13 70);
+}
+
+.renamed {
+  background: color-mix(in oklch, var(--diff-rename) 12%, transparent);
+  color: var(--diff-rename);
+}

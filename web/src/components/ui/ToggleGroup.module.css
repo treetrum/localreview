@@ -1,0 +1,29 @@
+.group {
+  display: inline-flex;
+  flex-shrink: 0;
+  border: 1px solid var(--input);
+  border-radius: calc(var(--radius) - 2px);
+  overflow: hidden;
+}
+
+.item {
+  display: inline-grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  color: var(--muted-foreground);
+}
+
+.item + .item {
+  border-left-width: 1px;
+}
+
+.item:hover {
+  background: var(--accent);
+  color: var(--accent-foreground);
+}
+
+.item[aria-pressed="true"] {
+  background: var(--accent);
+  color: var(--foreground);
+}
