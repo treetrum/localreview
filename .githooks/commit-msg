@@ -1,0 +1,13 @@
+#!/bin/sh
+# Enforces Conventional Commits; merge, revert and fixup/squash commits pass through.
+subject=$(head -n 1 "$1")
+
+case "$subject" in
+  Merge\ * | Revert\ * | fixup!\ * | squash!\ * | amend!\ *) exit 0 ;;
+esac
+
+if ! printf '%s\n' "$subject" | grep -Eq '^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\([^)]+\))?!?: .+'; then
+  echo "commit-msg: subject must follow Conventional Commits, e.g. 'feat(diff): add split view'" >&2
+  echo "  got: $subject" >&2
+  exit 1
+fi
