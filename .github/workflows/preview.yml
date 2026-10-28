@@ -1,0 +1,44 @@
+name: Preview
+
+on:
+  pull_request:
+
+concurrency:
+  group: preview-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  deploy:
+    name: Deploy preview to Cloudflare Pages
+    # Fork PRs don't get secrets, so they can't deploy.
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          # The snapshot diffs against the merge-base with main, which needs history.
+          fetch-depth: 0
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: package.json
+      - run: bun install --frozen-lockfile
+      - run: bun run build
+      - run: bun scripts/preview-snapshot.ts origin/${{ github.base_ref }}
+      - id: deploy
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy dist --project-name=localreview --branch=pr-${{ github.event.pull_request.number }} --commit-dirty=true
+      - uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          header: preview
+          message: |
+            **Preview:** ${{ steps.deploy.outputs.pages-deployment-alias-url }}
+
+            Built from ${{ github.event.pull_request.head.sha }}, showing this PR's own diff. Deployment: ${{ steps.deploy.outputs.deployment-url }}
