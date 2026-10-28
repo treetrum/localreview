@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { filePath, type DiffResponse } from "../../shared/types";
 import { FileDiff } from "./components/FileDiff";
 import { FileNav } from "./components/FileNav";
@@ -10,6 +10,7 @@ import { matchesQuery } from "./lib/filter";
 import { formatReview } from "./lib/format";
 import { fileFingerprint, hasFeedback, storageKey, type ReviewComment } from "./lib/review";
 import { buildTree, filterTree, treeOrder } from "./lib/tree";
+import { useCopy } from "./lib/useCopy";
 import { useDiff } from "./lib/useDiff";
 import { useReview } from "./lib/useReview";
 import styles from "./App.module.css";
@@ -49,7 +50,6 @@ export function App() {
 }
 
 const EMPTY_COMMENTS: ReviewComment[] = [];
-const COPIED_MS = 2000;
 
 type ReviewProps = {
   diff: DiffResponse;
@@ -61,9 +61,7 @@ type ReviewProps = {
 function Review({ diff, error, refreshing, onRefresh }: ReviewProps) {
   const { review, actions } = useReview(storageKey(diff));
   const [query, setQuery] = useState("");
-  const [copied, setCopied] = useState(false);
-  const copiedTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-  useEffect(() => () => clearTimeout(copiedTimer.current), []);
+  const [copied, copyText] = useCopy();
 
   const tree = useMemo(() => buildTree(diff.files), [diff.files]);
   const files = useMemo(() => treeOrder(tree), [tree]);
@@ -103,22 +101,18 @@ function Review({ diff, error, refreshing, onRefresh }: ReviewProps) {
 
   const feedback = hasFeedback(review);
 
-  const copy = useCallback(async () => {
-    const markdown = formatReview({
-      label: diff.label,
-      files,
-      summary: review.summary,
-      comments: review.comments,
-    });
-    try {
-      await navigator.clipboard.writeText(markdown);
-      setCopied(true);
-      clearTimeout(copiedTimer.current);
-      copiedTimer.current = setTimeout(() => setCopied(false), COPIED_MS);
-    } catch (err) {
-      window.alert(`Couldn't copy to the clipboard: ${String(err)}`);
-    }
-  }, [diff.label, files, review.summary, review.comments]);
+  const copy = useCallback(
+    () =>
+      copyText(
+        formatReview({
+          label: diff.label,
+          files,
+          summary: review.summary,
+          comments: review.comments,
+        }),
+      ),
+    [copyText, diff.label, files, review.summary, review.comments],
+  );
 
   const clear = () => {
     if (window.confirm("Clear all comments and overall feedback? Viewed files stay marked.")) {

@@ -163,6 +163,16 @@ describe("FileDiff", () => {
     });
   });
 
+  test("does copy the new path when the copy file path button is clicked on a renamed file", async () => {
+    const user = userEvent.setup();
+    render(
+      <FileDiff {...defaultProps} file={demoFile("src/util/new.ts")} path="src/util/new.ts" />,
+    );
+    await user.click(screen.getByRole("button", { name: "Copy file path" }));
+    expect(await navigator.clipboard.readText()).toBe("src/util/new.ts");
+    expect(screen.getByRole("button", { name: "Copied file path" })).toBeInTheDocument();
+  });
+
   test("does pass the fingerprint when marking viewed and null when unmarking", async () => {
     const user = userEvent.setup();
     const { rerender } = render(<FileDiff {...defaultProps} />);
