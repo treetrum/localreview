@@ -44,5 +44,6 @@ non-trivial changes and keep it up to date when behaviour or structure changes.
 ## CI
 
 `.github/workflows/ci.yml` runs on pull requests and pushes to `main`: the `bun run check` steps
-plus a build, and the Playwright suite. `.github/workflows/pr-title.yml` checks that PR titles
+plus a build, and the Playwright suite. `.github/workflows/preview.yml` deploys each PR to Cloudflare
+Pages with a static snapshot of a fixed demo diff (`scripts/preview-snapshot.ts`). `.github/workflows/pr-title.yml` checks that PR titles
 follow Conventional Commits.

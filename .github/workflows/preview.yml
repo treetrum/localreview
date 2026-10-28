@@ -1,0 +1,81 @@
+name: Preview
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, closed]
+
+concurrency:
+  group: preview-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  deploy:
+    name: Deploy preview to Cloudflare Pages
+    # Fork PRs don't get secrets, so they can't deploy.
+    if: github.event.action != 'closed' && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: package.json
+      - run: bun install --frozen-lockfile
+      - run: bun run build
+      - run: bun scripts/preview-snapshot.ts
+      # Fails harmlessly once the project exists; real problems surface in the deploy step.
+      - name: Ensure Pages project exists
+        run: bunx wrangler@4 pages project create localreview --production-branch=main || true
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      - id: deploy
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          wranglerVersion: "4"
+          command: pages deploy dist --project-name=localreview --branch=pr-${{ github.event.pull_request.number }} --commit-dirty=true
+      - uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          header: preview
+          message: |
+            **Preview:** ${{ steps.deploy.outputs.pages-deployment-alias-url }}
+
+            Built from ${{ github.event.pull_request.head.sha }}, showing a demo diff. Deployment: ${{ steps.deploy.outputs.deployment-url }}
+
+  cleanup:
+    name: Delete preview from Cloudflare Pages
+    if: github.event.action == 'closed' && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Delete this PR's deployments
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          API: https://api.cloudflare.com/client/v4/accounts/${{ secrets.CLOUDFLARE_ACCOUNT_ID }}/pages/projects/localreview/deployments
+          BRANCH: pr-${{ github.event.pull_request.number }}
+        run: |
+          # Collect every id before deleting, since deleting shifts the pages being listed.
+          ids=()
+          page=1
+          while :; do
+            response=$(curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$API?env=preview&per_page=25&page=$page")
+            ids+=($(jq -r --arg branch "$BRANCH" '.result[] | select(.deployment_trigger.metadata.branch == $branch) | .id' <<<"$response"))
+            [ "$(jq '.result | length' <<<"$response")" -lt 25 ] && break
+            page=$((page + 1))
+          done
+          echo "Deleting ${#ids[@]} deployments of $BRANCH"
+          for id in "${ids[@]}"; do
+            # force deletes the deployment that currently holds the branch alias too.
+            curl -fsS -X DELETE -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$API/$id?force=true" >/dev/null
+          done
+      - uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          header: preview
+          message: |
+            **Preview:** removed now that this PR is closed.
