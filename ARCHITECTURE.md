@@ -734,12 +734,13 @@ bun run format     # oxfmt (write)
   - `e2e`: installs Chromium with system dependencies and runs `bun run test:e2e`; on failure it
     uploads the Playwright report and traces as an artifact.
 - **`preview.yml`** deploys a live preview of each same-repo PR to Cloudflare Pages
-  (`pr-<number>.localreview.pages.dev`) and posts the URL as a sticky PR comment. The UI only
+  (`pr-<number>.localreview.pages.dev`) and posts the URL as a sticky PR comment. When the PR
+  closes, a `cleanup` job deletes that PR's deployments through the Cloudflare API. The UI only
   talks to the server through `GET /api/diff`, so `scripts/preview-snapshot.ts` builds a fixed demo
-  repo and writes its diff to `dist/api/diff` after the build, and the static
-  site works without the server. Refresh just re-reads the snapshot. Needs the
-  `CLOUDFLARE_API_TOKEN` (Pages: Edit) and `CLOUDFLARE_ACCOUNT_ID` repo secrets and creates the
-  `localreview` Pages project on first run; fork PRs are skipped because they don't get secrets.
+  repo and writes its diff to `dist/api/diff` after the build, and the static site works without
+  the server. Refresh just re-reads the snapshot. Needs the `CLOUDFLARE_API_TOKEN` (Pages: Edit)
+  and `CLOUDFLARE_ACCOUNT_ID` repo secrets and creates the `localreview` Pages project on first
+  run; fork PRs are skipped because they don't get secrets.
 - **`pr-title.yml`** checks the PR title against the same Conventional Commits pattern as the
   `commit-msg` hook, re-running when the title is edited.
 
