@@ -291,4 +291,81 @@ describe("FileDiff", () => {
       screen.getByRole("heading", { name: "src/util/old.ts → src/util/new.ts" }),
     ).toBeInTheDocument();
   });
+  describe("split view", () => {
+    const splitProps: FileDiffProps = { ...defaultProps, view: "split" };
+
+    test("does show deletions beside additions and context lines on both sides", () => {
+      render(<FileDiff {...splitProps} />);
+      expect(rowOf("deleted line 6")).toBe(rowOf("line 6"));
+      const context = rowOf("line 3");
+      expect(within(context).getAllByRole("button")).toHaveLength(1);
+      expect(within(context).getAllByText("3")).toHaveLength(2);
+      expect(within(context).getAllByText("const port = 3000;")).toHaveLength(2);
+    });
+
+    test("does span both sides when shift-clicking from a deleted line to an added one", async () => {
+      const user = userEvent.setup();
+      render(<FileDiff {...splitProps} />);
+      await user.click(plus("deleted line 6"));
+      await user.keyboard("{Shift>}");
+      await user.click(plus("line 8"));
+      await user.keyboard("{/Shift}");
+      await comment(user, "Both");
+
+      expect(actions.addComment).toHaveBeenCalledWith({
+        path: "src/server.ts",
+        range: { start: { side: "old", line: 6 }, end: { side: "new", line: 8 } },
+        snippet: [
+          { type: "del", content: "    fetch(req) {" },
+          { type: "add", content: "    async fetch(req) {" },
+          { type: "add", content: "      const url = new URL(req.url);" },
+          {
+            type: "add",
+            content: '      if (url.pathname === "/health") return new Response("ok");',
+          },
+        ],
+        body: "Both",
+      });
+    });
+
+    test("does extend the selection while dragging across cells", async () => {
+      const user = userEvent.setup();
+      render(<FileDiff {...splitProps} />);
+      fireEvent.mouseDown(plus("line 3"));
+      fireEvent.mouseEnter(within(rowOf("line 5")).getAllByText("5")[1] as HTMLElement);
+      fireEvent.mouseUp(window);
+      expect(screen.getByRole("textbox").closest("tr")?.previousElementSibling).toBe(
+        rowOf("line 5"),
+      );
+      await comment(user, "Drag");
+
+      expect(actions.addComment).toHaveBeenCalledWith(
+        expect.objectContaining({
+          range: { start: { side: "new", line: 3 }, end: { side: "new", line: 5 } },
+        }),
+      );
+    });
+
+    test("does render comments under the side their range ends on", () => {
+      const comments = [
+        mockComment,
+        {
+          ...mockComment,
+          id: "c2",
+          range: {
+            start: { side: "old" as const, line: 6 },
+            end: { side: "old" as const, line: 6 },
+          },
+        },
+      ];
+      render(<FileDiff {...splitProps} comments={comments} />);
+      const [oldCard, newCard] = screen
+        .getAllByRole("article", { name: "Comment" })
+        .map((card) => card.closest("td") as HTMLTableCellElement);
+      expect(oldCard?.cellIndex).toBe(0);
+      expect(newCard?.cellIndex).toBe(1);
+      expect(oldCard?.parentElement).toBe(newCard?.parentElement);
+      expect(oldCard?.parentElement?.previousElementSibling).toBe(rowOf("line 6"));
+    });
+  });
 });

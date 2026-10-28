@@ -9,6 +9,15 @@ const section = (path: string) => screen.getByRole("region", { name: path });
 const navLink = (name: RegExp) =>
   within(screen.getByRole("navigation", { name: "Files" })).getByRole("link", { name });
 
+/** Whether two lines' + buttons share a table row, i.e. they're shown side by side. */
+function sameRow(path: string, a: string, b: string) {
+  const file = within(section(path));
+  return (
+    file.getByRole("button", { name: `Comment on ${a}` }).closest("tr") ===
+    file.getByRole("button", { name: `Comment on ${b}` }).closest("tr")
+  );
+}
+
 async function ready() {
   await screen.findByRole("heading", { name: "demo" });
 }
@@ -213,5 +222,28 @@ Split this file
     expect(summary).toHaveValue("");
     expect(confirm).toHaveBeenCalledTimes(2);
     expect(screen.getByText("1/4 viewed")).toBeInTheDocument();
+  });
+
+  test("does switch every file to split view and remember the choice", async () => {
+    const { user, unmount } = renderApp();
+    await ready();
+    expect(screen.getByRole("button", { name: "Unified view" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    expect(sameRow("src/server.ts", "deleted line 6", "line 6")).toBe(false);
+
+    await user.click(screen.getByRole("button", { name: "Split view" }));
+    expect(sameRow("src/server.ts", "deleted line 6", "line 6")).toBe(true);
+    expect(sameRow("src/util/new.ts", "deleted line 1", "line 1")).toBe(true);
+
+    unmount();
+    renderApp();
+    await ready();
+    expect(screen.getByRole("button", { name: "Split view" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    expect(sameRow("src/server.ts", "deleted line 6", "line 6")).toBe(true);
   });
 });
