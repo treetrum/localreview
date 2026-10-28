@@ -4,10 +4,11 @@ import { cx } from "../lib/cx";
 import { lineTokens, type Token } from "../lib/highlight";
 import { flattenLines, linePos, posKey, type ReviewComment } from "../lib/review";
 import type { ReviewActions } from "../lib/useReview";
+import { useCopy } from "../lib/useCopy";
 import { useHighlightedFile } from "../lib/useHighlightedFile";
 import { CommentCard, CommentForm } from "./Comment";
 import { FileStatusBadge } from "./FileStatusBadge";
-import { ChevronDown, ChevronRight, MessageSquare, Plus } from "./icons";
+import { Check, ChevronDown, ChevronRight, Copy, MessageSquare, Plus } from "./icons";
 import { Button } from "./ui/Button";
 import { Checkbox } from "./ui/Checkbox";
 import styles from "./FileDiff.module.css";
@@ -55,6 +56,7 @@ export const FileDiff = memo(function FileDiff({
   const [selection, setSelection] = useState<Selection | null>(null);
   const [dragging, setDragging] = useState(false);
   const [fileDraft, setFileDraft] = useState(false);
+  const [pathCopied, copyPath] = useCopy();
 
   const lines = useMemo(() => flattenLines(file), [file]);
   const rows = useMemo(() => {
@@ -175,6 +177,15 @@ export const FileDiff = memo(function FileDiff({
         <h2 className={styles.path} title={displayPath}>
           {displayPath}
         </h2>
+        <Button
+          variant="ghost"
+          size="icon-xs"
+          aria-label={pathCopied ? "Copied file path" : "Copy file path"}
+          title="Copy file path"
+          onClick={() => void copyPath(path)}
+        >
+          {pathCopied ? <Check size={14} /> : <Copy size={14} />}
+        </Button>
         <span className={styles.stats}>
           <span className={styles.additions}>+{file.additions}</span>
           <span className={styles.deletions}>−{file.deletions}</span>

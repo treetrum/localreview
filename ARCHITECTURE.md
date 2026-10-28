@@ -62,6 +62,7 @@ diff changed is automatically un-marked as viewed.
 | **Editing**                   | Edit and delete comments. ⌘/Ctrl+↵ submits, Esc cancels.                                                                                                                  |
 | **Outdated comments**         | If a commented line disappears after a refresh, the comment moves to the top of the file with an _Outdated_ badge. It's still included when copying.                      |
 | **Copy review**               | Formats all feedback as Markdown (with `diff` snippets) and copies it to the clipboard.                                                                                   |
+| **Copy file path**            | An icon button beside each file's path copies it (the new path for renames) to the clipboard.                                                                             |
 | **Persistence**               | Comments, summary and viewed state are saved in `localStorage` per repo and diff target. **Clear** removes feedback but keeps viewed state.                               |
 | **Viewed tracking**           | A per-file **Viewed** checkbox collapses the file. A progress bar in the header shows _x/y viewed_. Viewed marks reset automatically when a file's diff changes.          |
 | **File navigation**           | Sidebar with **tree** view (collapsible folders, single-child chains compressed like `src/components`) or **list** view (filename + directory). The choice is remembered. |
@@ -311,7 +312,7 @@ App                              load states (loading / error + Try again / read
     │   └── Tree / list → FileRow
     └── main
         ├── Overall feedback (Textarea)
-        └── FileDiff × N  (memo)  header (collapse, status, path, stats, Comment on file, Viewed)
+        └── FileDiff × N  (memo)  header (collapse, status, path, copy path, stats, Comment on file, Viewed)
                                   file / outdated comments, file draft
                                   table: hunk rows, line rows (+ button), comment rows / form
 ```
