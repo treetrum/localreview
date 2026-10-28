@@ -125,3 +125,34 @@ export const TriangleAlert = icon(
     <path d="M12 17h.01" />
   </>,
 );
+export const ChevronUp = icon(<path d="m18 15-6-6-6 6" />);
+export const ChevronsUpDown = icon(
+  <>
+    <path d="m7 15 5 5 5-5" />
+    <path d="m7 9 5-5 5 5" />
+  </>,
+);
+export const UnfoldVertical = icon(
+  <>
+    <path d="M12 22v-6" />
+    <path d="M12 8V2" />
+    <path d="M4 12H2" />
+    <path d="M10 12H8" />
+    <path d="M16 12h-2" />
+    <path d="M22 12h-2" />
+    <path d="m15 19-3 3-3-3" />
+    <path d="m15 5-3-3-3 3" />
+  </>,
+);
+export const FoldVertical = icon(
+  <>
+    <path d="M12 22v-6" />
+    <path d="M12 8V2" />
+    <path d="M4 12H2" />
+    <path d="M10 12H8" />
+    <path d="M16 12h-2" />
+    <path d="M22 12h-2" />
+    <path d="m15 19-3-3-3 3" />
+    <path d="m15 5-3 3-3-3" />
+  </>,
+);

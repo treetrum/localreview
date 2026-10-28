@@ -41,10 +41,6 @@ export function posKey(pos: LinePos): string {
   return `${pos.side}:${pos.line}`;
 }
 
-export function flattenLines(file: DiffFile): DiffLine[] {
-  return file.hunks.flatMap((hunk) => hunk.lines);
-}
-
 export function rangeLabel(range: LineRange): string {
   const { start, end } = range;
   if (start.side !== end.side) return `Lines ${start.side} ${start.line}–${end.side} ${end.line}`;

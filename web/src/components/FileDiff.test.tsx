@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, test, vi } from "vitest";
-import { demoFile, mockComment } from "../test/fixtures";
+import { demoFile, demoServerContent, mockComment } from "../test/fixtures";
 import type { ReviewActions } from "../lib/useReview";
 import { FileDiff, type FileDiffProps } from "./FileDiff";
 
@@ -23,6 +23,8 @@ const defaultProps: FileDiffProps = {
   comments: [],
   actions,
 };
+
+const withContent = { ...defaultProps.file, newContent: demoServerContent };
 
 const plus = (name: string) => screen.getByRole("button", { name: `Comment on ${name}` });
 const rowOf = (name: string) => plus(name).closest("tr") as HTMLElement;
@@ -148,6 +150,80 @@ describe("FileDiff", () => {
     const card = screen.getByRole("article", { name: "Comment" });
     expect(within(card).getByText("Outdated")).toBeInTheDocument();
     expect(card.closest("table")).toBeNull();
+  });
+
+  test("does reveal hidden lines when an expand button is clicked", async () => {
+    const user = userEvent.setup();
+    render(<FileDiff {...defaultProps} file={withContent} />);
+    expect(screen.queryByRole("button", { name: "Comment on line 12" })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Expand all 10 hidden lines" }));
+    expect(plus("line 12")).toBeInTheDocument();
+    expect(plus("line 21")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Expand down 20 lines" }));
+    expect(plus("line 44")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Comment on line 45" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Expand all 6 hidden lines" })).toBeInTheDocument();
+  });
+
+  test("does anchor comments on revealed lines to the new side", async () => {
+    const user = userEvent.setup();
+    render(<FileDiff {...defaultProps} file={withContent} />);
+    await user.click(screen.getByRole("button", { name: "Expand all 10 hidden lines" }));
+    await user.click(plus("line 12"));
+    await comment(user, "Remove this");
+
+    expect(actions.addComment).toHaveBeenCalledWith({
+      path: "src/server.ts",
+      range: { start: { side: "new", line: 12 }, end: { side: "new", line: 12 } },
+      snippet: [{ type: "context", content: "// line 12" }],
+      body: "Remove this",
+    });
+  });
+
+  test("does keep the comment form on its line when lines are revealed above it", async () => {
+    const user = userEvent.setup();
+    render(<FileDiff {...defaultProps} file={withContent} />);
+    await user.click(plus("line 23"));
+    await user.click(screen.getByRole("button", { name: "Expand all 10 hidden lines" }));
+    expect(screen.getByRole("textbox").closest("tr")?.previousElementSibling).toBe(
+      rowOf("line 23"),
+    );
+  });
+
+  test("does keep lines outside the hunks revealed when they have comments", () => {
+    const comments = [
+      {
+        ...mockComment,
+        range: {
+          start: { side: "new" as const, line: 15 },
+          end: { side: "new" as const, line: 15 },
+        },
+      },
+    ];
+    render(<FileDiff {...defaultProps} file={withContent} comments={comments} />);
+    const card = screen.getByRole("article", { name: "Comment" });
+    expect(card.closest("tr")?.previousElementSibling).toBe(rowOf("line 15"));
+    expect(within(card).queryByText("Outdated")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Comment on line 14" })).not.toBeInTheDocument();
+  });
+
+  test("does expand and collapse every line from the file header", async () => {
+    const user = userEvent.setup();
+    render(<FileDiff {...defaultProps} file={withContent} />);
+    await user.click(screen.getByRole("button", { name: "Expand all lines" }));
+    expect(plus("line 1")).toBeInTheDocument();
+    expect(plus("line 50")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Collapse expanded lines" }));
+    expect(screen.queryByRole("button", { name: "Comment on line 1" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Expand all lines" })).toBeInTheDocument();
+  });
+
+  test("does not offer expanding when the file contents are unavailable", () => {
+    render(<FileDiff {...defaultProps} />);
+    expect(screen.queryByRole("button", { name: /^Expand (all|up|down)/ })).not.toBeInTheDocument();
   });
 
   test("does add a file-level comment", async () => {

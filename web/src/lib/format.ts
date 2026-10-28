@@ -1,12 +1,6 @@
 import { filePath, type DiffFile } from "../../../shared/types";
-import {
-  flattenLines,
-  linePos,
-  posKey,
-  rangeLabel,
-  type ReviewComment,
-  type SnippetLine,
-} from "./review";
+import { buildRows, commentSpans, rowLines } from "./expand";
+import { linePos, posKey, rangeLabel, type ReviewComment, type SnippetLine } from "./review";
 
 export type FormatInput = {
   label: string;
@@ -38,13 +32,14 @@ export function formatReview({ label, files, summary, comments }: FormatInput): 
   for (const path of paths) {
     sections.push(`## ${inlineCode(path)}`);
     const file = known.get(path);
-    const positions = new Map(
-      file ? flattenLines(file).map((line, i) => [posKey(linePos(line)), i]) : [],
-    );
+    const fileComments = byPath.get(path) ?? [];
+    // Lines commented on outside the hunks count as present, as they stay revealed in the UI.
+    const lines = file ? rowLines(buildRows(file, commentSpans(fileComments))) : [];
+    const positions = new Map(lines.map((line, i) => [posKey(linePos(line)), i]));
     // File-level comments first, then outdated ones (as shown in the UI), then by end line.
     const order = (comment: ReviewComment) =>
       comment.range ? (positions.get(posKey(comment.range.end)) ?? -1) : -2;
-    const sorted = (byPath.get(path) ?? []).toSorted(
+    const sorted = fileComments.toSorted(
       (a, b) => order(a) - order(b) || a.createdAt - b.createdAt,
     );
 

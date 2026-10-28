@@ -70,6 +70,31 @@ Use a template
 `);
 });
 
+test("reveals unchanged lines and keeps comments on them after a reload", async ({ page }) => {
+  const app = section(page, "src/app.ts");
+  await app.getByRole("button", { name: "Expand all 2 hidden lines" }).click();
+  await app.getByRole("button", { name: "Comment on line 7", exact: true }).click();
+  await app.getByRole("textbox", { name: "Comment" }).fill("Template here too");
+  await app.getByRole("textbox", { name: "Comment" }).press("ControlOrMeta+Enter");
+
+  await page.reload();
+  const card = app.getByRole("article", { name: "Comment" });
+  await expect(card).toContainText("Template here too");
+  await expect(card).not.toContainText("Outdated");
+  await expect(app.getByRole("row").filter({ hasText: 'return "Bye, " + name;' })).toBeVisible();
+
+  await page.getByRole("button", { name: "Copy review" }).click();
+  await expect(page.getByRole("button", { name: "Copied" })).toBeVisible();
+  const clipboard = await page.evaluate(() => navigator.clipboard.readText());
+  expect(clipboard).toContain(`### Line 7
+
+\`\`\`diff
+   return "Bye, " + name;
+\`\`\`
+
+Template here too`);
+});
+
 test("scrolls a file into view when its sidebar link is clicked", async ({ page }) => {
   const readme = section(page, "README.md");
   await expect(readme).not.toBeInViewport();

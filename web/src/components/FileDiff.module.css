@@ -13,6 +13,7 @@
   top: var(--header-height);
   z-index: 2;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 0.5rem;
   min-height: 2.75rem;
@@ -55,6 +56,14 @@
   margin-left: auto;
 }
 
+/* On narrow screens the actions get their own row, so the path isn't squeezed to nothing. */
+@media (max-width: 760px) {
+  .headerActions {
+    flex-basis: 100%;
+    justify-content: flex-end;
+  }
+}
+
 .viewed {
   display: inline-flex;
   align-items: center;
@@ -95,12 +104,44 @@
 }
 
 .hunk td {
-  padding: 0.25rem 0.75rem;
   background: var(--diff-hunk-bg);
   color: var(--muted-foreground);
+}
+
+.hunkHeader {
+  padding: 0.25rem 0.75rem;
   white-space: pre;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.expandCell {
+  padding: 0;
+  vertical-align: top;
+}
+
+.expand {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 1.75rem;
+  color: var(--muted-foreground);
+  cursor: pointer;
+}
+
+.expand:hover,
+.expand:focus-visible {
+  background: var(--diff-hunk-bg);
+  color: var(--foreground);
+}
+
+.expand:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: -2px;
+}
+
+.expanded .num {
+  background: color-mix(in oklch, var(--muted) 60%, transparent);
 }
 
 .num {

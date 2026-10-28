@@ -44,6 +44,8 @@ In the browser:
 
 - Hover a line and click **+** to comment. Drag across rows, or shift-click a second **+**, for a
   range.
+- Click the arrows on a hunk header to show more unchanged lines around it, or **Expand all lines**
+  in the file header to show the whole file. Expanded lines can be commented on too.
 - **Comment on file** for file-level feedback; **Overall feedback** for the whole change.
 - ⌘/Ctrl+↵ submits a comment, Esc cancels.
 - Tick **Viewed** to collapse a file. If the file's diff changes later, it's un-marked

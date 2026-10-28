@@ -1,14 +1,33 @@
-import { memo, useMemo, useRef, useState, type MouseEvent } from "react";
-import type { DiffFile, DiffLine } from "../../../shared/types";
+import { memo, useMemo, useRef, useState, type MouseEvent, type ReactNode } from "react";
+import type { DiffFile } from "../../../shared/types";
 import { cx } from "../lib/cx";
+import {
+  buildRows,
+  commentSpans,
+  EXPAND_STEP,
+  rowLines,
+  type DiffRow,
+  type Span,
+} from "../lib/expand";
 import { lineTokens, type Token } from "../lib/highlight";
-import { flattenLines, linePos, posKey, type ReviewComment } from "../lib/review";
+import { linePos, posKey, type ReviewComment } from "../lib/review";
 import type { ReviewActions } from "../lib/useReview";
 import { useCopy } from "../lib/useCopy";
 import { useHighlightedFile } from "../lib/useHighlightedFile";
 import { CommentCard, CommentForm } from "./Comment";
 import { FileStatusBadge } from "./FileStatusBadge";
-import { Check, ChevronDown, ChevronRight, Copy, MessageSquare, Plus } from "./icons";
+import {
+  Check,
+  ChevronDown,
+  ChevronRight,
+  ChevronsUpDown,
+  ChevronUp,
+  Copy,
+  FoldVertical,
+  MessageSquare,
+  Plus,
+  UnfoldVertical,
+} from "./icons";
 import { Button } from "./ui/Button";
 import { Checkbox } from "./ui/Checkbox";
 import styles from "./FileDiff.module.css";
@@ -25,10 +44,9 @@ export type FileDiffProps = {
   hidden?: boolean;
 };
 
-type Row =
-  | { kind: "hunk"; header: string; key: string }
-  | { kind: "line"; line: DiffLine; index: number };
-type Selection = { anchor: number; focus: number };
+/** Selected lines, by `posKey`, so the selection survives rows being revealed above it. */
+type Selection = { anchor: string; focus: string };
+type GapRow = Extract<DiffRow, { kind: "gap" }>;
 
 const PREFIX = { add: "+", del: "-", context: " " } as const;
 
@@ -58,23 +76,20 @@ export const FileDiff = memo(function FileDiff({
   const [fileDraft, setFileDraft] = useState(false);
   const [pathCopied, copyPath] = useCopy();
 
-  const lines = useMemo(() => flattenLines(file), [file]);
-  const rows = useMemo(() => {
-    const result: Row[] = [];
-    let index = 0;
-    for (const hunk of file.hunks) {
-      result.push({
-        kind: "hunk",
-        header: hunk.header,
-        key: `hunk:${hunk.oldStart}:${hunk.newStart}`,
-      });
-      for (const line of hunk.lines) result.push({ kind: "line", line, index: index++ });
-    }
-    return result;
-  }, [file]);
+  const [expanded, setExpanded] = useState<Span[]>([]);
+  const rows = useMemo(
+    () => buildRows(file, [...expanded, ...commentSpans(comments)]),
+    [file, expanded, comments],
+  );
+  const lines = useMemo(() => rowLines(rows), [rows]);
+  const indexOf = useMemo(
+    () => new Map(lines.map((line, index) => [posKey(linePos(line)), index])),
+    [lines],
+  );
+  const expandable = rows.some((row) => row.kind === "gap" && (row.up || row.down));
+  const reveal = (span: Span) => setExpanded((current) => [...current, span]);
 
   const { fileComments, outdated, byEnd } = useMemo(() => {
-    const positions = new Set(lines.map((line) => posKey(linePos(line))));
     const grouped = {
       fileComments: [] as ReviewComment[],
       outdated: [] as ReviewComment[],
@@ -82,18 +97,21 @@ export const FileDiff = memo(function FileDiff({
     };
     for (const comment of comments.toSorted((a, b) => a.createdAt - b.createdAt)) {
       if (!comment.range) grouped.fileComments.push(comment);
-      else if (!positions.has(posKey(comment.range.end))) grouped.outdated.push(comment);
+      else if (!indexOf.has(posKey(comment.range.end))) grouped.outdated.push(comment);
       else {
         const key = posKey(comment.range.end);
         grouped.byEnd.set(key, [...(grouped.byEnd.get(key) ?? []), comment]);
       }
     }
     return grouped;
-  }, [comments, lines]);
+  }, [comments, indexOf]);
 
-  const [lo, hi] = selection
-    ? [Math.min(selection.anchor, selection.focus), Math.max(selection.anchor, selection.focus)]
-    : [-1, -1];
+  const anchor = selection ? indexOf.get(selection.anchor) : undefined;
+  const focus = selection ? indexOf.get(selection.focus) : undefined;
+  const [lo, hi] =
+    anchor !== undefined && focus !== undefined
+      ? [Math.min(anchor, focus), Math.max(anchor, focus)]
+      : [-1, -1];
 
   const toggleCollapsed = (next: boolean) => {
     const section = sectionRef.current;
@@ -105,25 +123,25 @@ export const FileDiff = memo(function FileDiff({
     setCollapsed(next);
   };
 
-  const onPlusMouseDown = (index: number, event: MouseEvent) => {
+  const onPlusMouseDown = (key: string, event: MouseEvent) => {
     if (event.button !== 0) return;
     event.preventDefault();
     if (event.shiftKey && selection) {
-      setSelection({ anchor: selection.anchor, focus: index });
+      setSelection({ anchor: selection.anchor, focus: key });
       return;
     }
-    setSelection({ anchor: index, focus: index });
+    setSelection({ anchor: key, focus: key });
     setDragging(true);
     window.addEventListener("mouseup", () => setDragging(false), { once: true });
   };
 
   // Keyboard activation fires click without mousedown (detail === 0).
-  const onPlusClick = (index: number, event: MouseEvent) => {
+  const onPlusClick = (key: string, event: MouseEvent) => {
     if (event.detail !== 0) return;
     setSelection(
       event.shiftKey && selection
-        ? { anchor: selection.anchor, focus: index }
-        : { anchor: index, focus: index },
+        ? { anchor: selection.anchor, focus: key }
+        : { anchor: key, focus: key },
     );
   };
 
@@ -191,6 +209,19 @@ export const FileDiff = memo(function FileDiff({
           <span className={styles.deletions}>−{file.deletions}</span>
         </span>
         <span className={styles.headerActions}>
+          {!collapsed && (expandable || expanded.length > 0) && (
+            <Button
+              variant="ghost"
+              size="icon-xs"
+              aria-label={expandable ? "Expand all lines" : "Collapse expanded lines"}
+              title={expandable ? "Expand all lines" : "Collapse expanded lines"}
+              onClick={() =>
+                setExpanded(expandable ? [{ start: 1, end: Number.MAX_SAFE_INTEGER }] : [])
+              }
+            >
+              {expandable ? <UnfoldVertical size={14} /> : <FoldVertical size={14} />}
+            </Button>
+          )}
           <Button variant="ghost" size="xs" onClick={() => setFileDraft(true)}>
             <MessageSquare size={14} />
             Comment on file
@@ -240,14 +271,10 @@ export const FileDiff = memo(function FileDiff({
               </colgroup>
               <tbody>
                 {rows.map((row) => {
-                  if (row.kind === "hunk") {
-                    return (
-                      <tr key={row.key} className={styles.hunk}>
-                        <td colSpan={3}>{row.header}</td>
-                      </tr>
-                    );
+                  if (row.kind === "gap") {
+                    return <GapRowView key={row.key} row={row} onReveal={reveal} />;
                   }
-                  const { line, index } = row;
+                  const { line, index, expanded: isExpanded } = row;
                   const key = posKey(linePos(line));
                   const selected = index >= lo && index <= hi;
                   const lineComments = byEnd.get(key);
@@ -261,10 +288,15 @@ export const FileDiff = memo(function FileDiff({
                   return [
                     <tr
                       key={key}
-                      className={cx(styles.line, styles[line.type], selected && styles.selected)}
+                      className={cx(
+                        styles.line,
+                        styles[line.type],
+                        isExpanded && styles.expanded,
+                        selected && styles.selected,
+                      )}
                       onMouseEnter={
                         dragging
-                          ? () => setSelection((s) => (s ? { ...s, focus: index } : s))
+                          ? () => setSelection((s) => (s ? { ...s, focus: key } : s))
                           : undefined
                       }
                     >
@@ -274,8 +306,8 @@ export const FileDiff = memo(function FileDiff({
                           type="button"
                           className={styles.plus}
                           aria-label={`Comment on ${label}`}
-                          onMouseDown={(event) => onPlusMouseDown(index, event)}
-                          onClick={(event) => onPlusClick(index, event)}
+                          onMouseDown={(event) => onPlusMouseDown(key, event)}
+                          onClick={(event) => onPlusClick(key, event)}
                         >
                           <Plus size={12} strokeWidth={3} />
                         </button>
@@ -315,6 +347,60 @@ export const FileDiff = memo(function FileDiff({
     </section>
   );
 });
+
+function GapRowView({ row, onReveal }: { row: GapRow; onReveal: (span: Span) => void }) {
+  const { start, end } = row.hidden;
+  const count = end - start + 1;
+  const buttons: { label: string; icon: ReactNode; span: Span }[] = [];
+  if ((row.up || row.down) && count <= EXPAND_STEP) {
+    buttons.push({
+      label: `Expand all ${count} hidden ${count === 1 ? "line" : "lines"}`,
+      icon:
+        row.up && row.down ? (
+          <ChevronsUpDown size={14} />
+        ) : row.up ? (
+          <ChevronUp size={14} />
+        ) : (
+          <ChevronDown size={14} />
+        ),
+      span: row.hidden,
+    });
+  } else {
+    if (row.down) {
+      buttons.push({
+        label: `Expand down ${EXPAND_STEP} lines`,
+        icon: <ChevronDown size={14} />,
+        span: { start, end: start + EXPAND_STEP - 1 },
+      });
+    }
+    if (row.up) {
+      buttons.push({
+        label: `Expand up ${EXPAND_STEP} lines`,
+        icon: <ChevronUp size={14} />,
+        span: { start: end - EXPAND_STEP + 1, end },
+      });
+    }
+  }
+  return (
+    <tr className={styles.hunk}>
+      <td colSpan={2} className={styles.expandCell}>
+        {buttons.map((button) => (
+          <button
+            key={button.label}
+            type="button"
+            className={styles.expand}
+            aria-label={button.label}
+            title={button.label}
+            onClick={() => onReveal(button.span)}
+          >
+            {button.icon}
+          </button>
+        ))}
+      </td>
+      <td className={styles.hunkHeader}>{row.header}</td>
+    </tr>
+  );
+}
 
 function Tokens({ tokens }: { tokens: Token[] }) {
   let offset = 0;

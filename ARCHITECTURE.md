@@ -57,6 +57,7 @@ diff changed is automatically un-marked as viewed.
 | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Diff targets**              | Default: current branch (committed + uncommitted + untracked) vs its merge-base with `main`/`master`. Also: any base ref, `--staged`, `--commit <sha>`.                   |
 | **Diff view**                 | Unified diff per file, with hunk headers, old/new line numbers, wrapped lines, sticky file headers and syntax highlighting (light and dark).                              |
+| **Expand context**            | Hunk headers carry GitHub-style expand buttons: 20 lines up or down, or all of a gap of 20 or fewer. **Expand all lines** in the file header shows the whole file.        |
 | **Line comments**             | Hover a line and click **+**. Drag across rows, or shift-click a second **+**, for a range. Comments on deleted lines are anchored to the old side.                       |
 | **File and overall comments** | **Comment on file** per file; an **Overall feedback** box for the whole change.                                                                                           |
 | **Editing**                   | Edit and delete comments. ⌘/Ctrl+↵ submits, Esc cancels.                                                                                                                  |
@@ -137,6 +138,7 @@ localreview/
 │       │   └── *.test.tsx    # component tests, next to each component
 │       ├── lib/
 │       │   ├── review.ts     # review types, line positions, fingerprints, range labels
+│       │   ├── expand.ts     # diff rows: hunks merged with revealed context lines
 │       │   ├── format.ts     # Markdown output
 │       │   ├── tree.ts       # file tree building, ordering and filtering
 │       │   ├── filter.ts     # path matching
@@ -312,9 +314,9 @@ App                              load states (loading / error + Try again / read
     │   └── Tree / list → FileRow
     └── main
         ├── Overall feedback (Textarea)
-        └── FileDiff × N  (memo)  header (collapse, status, path, copy path, stats, Comment on file, Viewed)
+        └── FileDiff × N  (memo)  header (collapse, status, path, copy path, stats, expand all, Comment on file, Viewed)
                                   file / outdated comments, file draft
-                                  table: hunk rows, line rows (+ button), comment rows / form
+                                  table: gap rows (expand buttons, hunk header), line rows (+ button), comment rows / form
 ```
 
 `Review` is keyed by its storage key, so switching to a different repo or target remounts it with
@@ -335,6 +337,7 @@ rather than being replaced by the error page, so unsaved drafts survive.
 | Tree vs list view                                | `FileNav` via `useLocalStorage` | `localStorage["localreview:fileView"]`           |
 | Collapsed folders                                | `Tree`                          | no                                               |
 | Collapsed file, line selection, drag, file draft | `FileDiff`                      | no                                               |
+| Revealed context lines                           | `FileDiff`                      | no (lines with comments are always revealed)     |
 | Copied flash (2 s)                               | `Review`                        | no                                               |
 
 Derived in `Review` (memoised): the tree, files in tree order, visible files/tree/paths for the
@@ -364,8 +367,9 @@ with sibling folder icons rather than chevrons.
   mousedown on **+**, `mouseenter` on later rows extends the selection, and a one-off
   `window` `mouseup` listener (attached in the mousedown handler) ends the drag, so releasing
   anywhere works. Keyboard activation (Enter/Space on a focused **+**) selects the line too.
-- Selection is stored as indices into the file's flattened line list (`anchor`/`focus`), so a
-  range can span hunks and both sides.
+- Selection is stored as the `posKey`s of its two ends (`anchor`/`focus`) and resolved to
+  indices into the file's displayed lines, so a range can span hunks and both sides, and an
+  open comment form stays on its line when lines are revealed above it.
 - The comment form renders **after the last selected row** once dragging ends. Submitting calls
   `actions.addComment` with:
   - `range`: start/end as `LinePos` (`{ side, line }`). Deleted lines use `{ side: "old", line:
@@ -375,7 +379,24 @@ with sibling folder icons rather than chevrons.
   `posKey(range.end)`). Comments whose end line no longer exists are shown as _Outdated_ (with
   their captured snippet) at the top of the file.
 
-### 7.5 Viewed and collapse
+### 7.5 Expanding context (`lib/expand.ts`)
+
+- No extra API: the gaps around hunks are filled from `newContent`, which the server already
+  sends for highlighting. Gap lines are unchanged, so their old line number is the new one
+  shifted by the net deletions of the hunks above. Highlighting works as for any other line.
+- `buildRows(file, revealed)` merges hunks with revealed spans of new-side line numbers. Each
+  hidden run becomes a gap row with `up`/`down` flags; the hunk header stays on the gap row
+  next to its hunk and disappears once that gap is fully revealed.
+- Expansion is disabled (headers only) when there's no `newContent` (binary, over 512 KB,
+  deleted) or when it doesn't match the diff's lines (the file changed since the diff).
+- Revealed spans are local `FileDiff` state and aren't persisted. **Lines with comments are
+  always revealed** (`commentSpans`), so a comment on an expanded line survives a reload and
+  is only outdated if its line is gone from the file. `formatReview` uses the same rows, so the
+  copied review agrees.
+- Expanded lines get a muted gutter. Below 760 px the file header's actions wrap onto their own
+  row so the path stays visible.
+
+### 7.6 Viewed and collapse
 
 - `Viewed` calls `actions.setViewed(path, fingerprint | null)`.
 - A file is viewed if `review.viewed[path] === fileFingerprint(currentFile)`. The fingerprint is
@@ -388,7 +409,7 @@ with sibling folder icons rather than chevrons.
 - When collapsing a file whose top has scrolled above the viewport, the view scrolls back to its
   header so you don't lose your place.
 
-### 7.6 Filter
+### 7.7 Filter
 
 - `matchesQuery(path, query)`: lowercase; split on whitespace; every term must be a substring.
 - **Debouncing lives in `FileSearch`.** It owns the input text, so a keystroke only re-renders
@@ -404,10 +425,11 @@ with sibling folder icons rather than chevrons.
   query matches files but all of them are viewed, the diff shows **Show viewed files** instead of
   **Clear filter**.
 
-### 7.7 Accessibility notes
+### 7.8 Accessibility notes
 
 - Controls are real `button`/`a`/`input`/`label` elements with accessible names (e.g. "Comment on
-  line 8", "Comment on deleted line 6", "Edit comment", "Viewed", "Filter files").
+  line 8", "Comment on deleted line 6", "Edit comment", "Viewed", "Filter files", "Expand up 20
+  lines", "Expand all 10 hidden lines", "Expand all lines").
 - Each file is a labelled `section` (a region named by its path).
 - The progress bar is a native `<progress>`. The view toggle is a `<fieldset>` of `aria-pressed`
   buttons. Folders use `aria-expanded`.
@@ -592,7 +614,7 @@ runtime is cleaner than forcing either one onto the other.
   - `Comment.test.tsx`: submit and cancel keys, blank comments, edit and delete.
   - `FileDiff.test.tsx`: the exact `addComment` payloads for deleted lines, shift-click ranges,
     ranges spanning both sides, drags and keyboard activation; comment placement; outdated
-    comments; the fingerprint passed to `setViewed`; collapse following `viewed`; binary files.
+    comments; expanding gaps, comments on revealed lines and expand/collapse all; the fingerprint passed to `setViewed`; collapse following `viewed`; binary files.
   - `FileNav.test.tsx`: tree and list views, the debounced `onQueryChange` (fake timers), Esc and
     ✕ clearing, the parent clearing the query, the `/` shortcut, match counts.
   - `useReview.test.ts`: persistence, per-key isolation, edit and delete, Clear semantics,
@@ -626,6 +648,8 @@ runtime is cleaner than forcing either one onto the other.
 3. Clicking a sidebar link scrolls the file into the viewport (real layout).
 4. Comments and viewed state survive a full page reload.
 5. Editing a file on disk, then refreshing, un-marks it as viewed.
+6. Expanding a gap from real file contents, commenting on a revealed line, and that comment
+   surviving a reload and copying without an _Outdated_ label.
 
 Fixtures (`e2e/fixtures.ts`):
 
@@ -734,7 +758,9 @@ bun run format     # oxfmt (write)
 
 **Limitations:**
 
-- **Unified view only.** No split view, and no expanding context around hunks.
+- **Unified view only.** No split view.
+- **Expansion state isn't persisted** beyond lines with comments, and files without contents
+  (over 512 KB) can't be expanded.
 - **No live reload of the diff.** You press refresh after files change (planned: `fs.watch` +
   server-sent events).
 - **Highlighting runs on the main thread.** It's lazy and serialised, but a very large file can
@@ -755,7 +781,7 @@ bun run format     # oxfmt (write)
 - Live diff updates (watch the repo, push over SSE; comments and viewed state already carry over
   thanks to fingerprints).
 - Keyboard navigation (next/previous file and hunk, `c` to comment, `v` to toggle viewed).
-- Split view; expanding context.
+- Split view.
 - A "Finish review" mode that prints the Markdown to stdout and exits, so an agent can run
   `localreview` itself and wait for feedback.
 - Highlighting in a Web Worker; a compiled single binary with embedded assets
