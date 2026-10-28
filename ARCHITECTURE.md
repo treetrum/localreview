@@ -738,8 +738,8 @@ bun run format     # oxfmt (write)
   talks to the server through `GET /api/diff`, so `scripts/preview-snapshot.ts` builds a fixed demo
   repo and writes its diff to `dist/api/diff` after the build, and the static
   site works without the server. Refresh just re-reads the snapshot. Needs the
-  `CLOUDFLARE_API_TOKEN` (Pages: Edit) and `CLOUDFLARE_ACCOUNT_ID` repo secrets and a Pages
-  project named `localreview`; fork PRs are skipped because they don't get secrets.
+  `CLOUDFLARE_API_TOKEN` (Pages: Edit) and `CLOUDFLARE_ACCOUNT_ID` repo secrets and creates the
+  `localreview` Pages project on first run; fork PRs are skipped because they don't get secrets.
 - **`pr-title.yml`** checks the PR title against the same Conventional Commits pattern as the
   `commit-msg` hook, re-running when the title is edited.
 

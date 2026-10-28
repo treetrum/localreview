@@ -26,11 +26,18 @@ jobs:
       - run: bun install --frozen-lockfile
       - run: bun run build
       - run: bun scripts/preview-snapshot.ts
+      # Fails harmlessly once the project exists; real problems surface in the deploy step.
+      - name: Ensure Pages project exists
+        run: bunx wrangler@4 pages project create localreview --production-branch=main || true
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       - id: deploy
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          wranglerVersion: "4"
           command: pages deploy dist --project-name=localreview --branch=pr-${{ github.event.pull_request.number }} --commit-dirty=true
       - uses: marocchino/sticky-pull-request-comment@v2
         with:
