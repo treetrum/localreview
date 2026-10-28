@@ -20,15 +20,12 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v5
-        with:
-          # The snapshot diffs against the merge-base with main, which needs history.
-          fetch-depth: 0
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version-file: package.json
       - run: bun install --frozen-lockfile
       - run: bun run build
-      - run: bun scripts/preview-snapshot.ts origin/${{ github.base_ref }}
+      - run: bun scripts/preview-snapshot.ts
       - id: deploy
         uses: cloudflare/wrangler-action@v3
         with:
@@ -41,4 +38,4 @@ jobs:
           message: |
             **Preview:** ${{ steps.deploy.outputs.pages-deployment-alias-url }}
 
-            Built from ${{ github.event.pull_request.head.sha }}, showing this PR's own diff. Deployment: ${{ steps.deploy.outputs.deployment-url }}
+            Built from ${{ github.event.pull_request.head.sha }}, showing a demo diff. Deployment: ${{ steps.deploy.outputs.deployment-url }}

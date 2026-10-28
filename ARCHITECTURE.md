@@ -735,8 +735,8 @@ bun run format     # oxfmt (write)
     uploads the Playwright report and traces as an artifact.
 - **`preview.yml`** deploys a live preview of each same-repo PR to Cloudflare Pages
   (`pr-<number>.localreview.pages.dev`) and posts the URL as a sticky PR comment. The UI only
-  talks to the server through `GET /api/diff`, so `scripts/preview-snapshot.ts` writes the PR's own
-  diff (vs the merge-base with the base branch) to `dist/api/diff` after the build, and the static
+  talks to the server through `GET /api/diff`, so `scripts/preview-snapshot.ts` builds a fixed demo
+  repo and writes its diff to `dist/api/diff` after the build, and the static
   site works without the server. Refresh just re-reads the snapshot. Needs the
   `CLOUDFLARE_API_TOKEN` (Pages: Edit) and `CLOUDFLARE_ACCOUNT_ID` repo secrets and a Pages
   project named `localreview`; fork PRs are skipped because they don't get secrets.
