@@ -80,6 +80,18 @@ test("scrolls a file into view when its sidebar link is clicked", async ({ page 
   await expect(page).toHaveURL(/#file-3$/);
 });
 
+test("shows a tooltip below a file list toolbar button when hovering it", async ({ page }) => {
+  const button = nav(page).getByRole("button", { name: "Hide viewed files" });
+  await button.hover();
+  const tooltip = page.getByText("Hide viewed files", { exact: true });
+  await expect(tooltip).toBeInViewport({ ratio: 1 });
+  const [buttonBox, tooltipBox] = await Promise.all([button.boundingBox(), tooltip.boundingBox()]);
+  expect(tooltipBox!.y).toBeGreaterThan(buttonBox!.y + buttonBox!.height);
+
+  await button.click();
+  await expect(tooltip).toBeHidden();
+});
+
 test("keeps comments and viewed state after a reload", async ({ page }) => {
   const readme = section(page, "README.md");
   await readme.getByRole("button", { name: "Comment on file" }).click();

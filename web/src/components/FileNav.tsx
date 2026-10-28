@@ -19,6 +19,7 @@ import {
 import { Button } from "./ui/Button";
 import { Input } from "./ui/Input";
 import { ToggleGroup } from "./ui/ToggleGroup";
+import { useTooltip } from "./ui/Tooltip";
 import styles from "./FileNav.module.css";
 
 export const DEBOUNCE_MS = 150;
@@ -53,6 +54,7 @@ export const FileNav = memo(function FileNav({
   commentCounts,
 }: FileNavProps) {
   const [view, setView] = useLocalStorage<FileView>("localreview:fileView", "tree", isFileView);
+  const hideViewedTip = useTooltip("Hide viewed files");
   const row = (file: DiffFile, depth: number, showDir: boolean) => {
     const path = filePath(file);
     return (
@@ -78,16 +80,17 @@ export const FileNav = memo(function FileNav({
           totalCount={totalCount}
         />
         <Button
+          {...hideViewedTip.triggerProps}
           variant="outline"
           size="icon-sm"
           className={styles.hideViewed}
           aria-label="Hide viewed files"
-          title="Hide viewed files"
           aria-pressed={hideViewed}
           onClick={() => onHideViewedChange(!hideViewed)}
         >
           <EyeOff />
         </Button>
+        {hideViewedTip.tooltip}
         <ToggleGroup
           label="File view"
           value={view}
