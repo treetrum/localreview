@@ -11,6 +11,7 @@ import { formatReview } from "./lib/format";
 import { fileFingerprint, hasFeedback, storageKey, type ReviewComment } from "./lib/review";
 import { buildTree, filterTree, treeOrder } from "./lib/tree";
 import { useDiff } from "./lib/useDiff";
+import { useLocalStorage } from "./lib/useLocalStorage";
 import { useReview } from "./lib/useReview";
 import styles from "./App.module.css";
 
@@ -49,6 +50,7 @@ export function App() {
 }
 
 const EMPTY_COMMENTS: ReviewComment[] = [];
+const isBoolean = (value: unknown): value is boolean => typeof value === "boolean";
 const COPIED_MS = 2000;
 
 type ReviewProps = {
@@ -61,6 +63,7 @@ type ReviewProps = {
 function Review({ diff, error, refreshing, onRefresh }: ReviewProps) {
   const { review, actions } = useReview(storageKey(diff));
   const [query, setQuery] = useState("");
+  const [hideViewed, setHideViewed] = useLocalStorage("localreview:hideViewed", false, isBoolean);
   const [copied, setCopied] = useState(false);
   const copiedTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   useEffect(() => () => clearTimeout(copiedTimer.current), []);
@@ -75,24 +78,6 @@ function Review({ diff, error, refreshing, onRefresh }: ReviewProps) {
     () => new Map(files.map((file) => [filePath(file), fileFingerprint(file)])),
     [files],
   );
-  const visiblePaths = useMemo(
-    () => new Set(files.map(filePath).filter((path) => matchesQuery(path, query))),
-    [files, query],
-  );
-  const visibleFiles = useMemo(
-    () => files.filter((file) => visiblePaths.has(filePath(file))),
-    [files, visiblePaths],
-  );
-  const visibleTree = useMemo(
-    () => (query ? filterTree(tree, visiblePaths) : tree),
-    [tree, query, visiblePaths],
-  );
-
-  const commentsByPath = useStableGroups(review.comments);
-  const commentCounts = useMemo(
-    () => new Map([...commentsByPath].map(([path, list]) => [path, list.length])),
-    [commentsByPath],
-  );
   const viewedPaths = useMemo(
     () =>
       new Set(
@@ -100,7 +85,29 @@ function Review({ diff, error, refreshing, onRefresh }: ReviewProps) {
       ),
     [fingerprints, review.viewed],
   );
+  const matchingPaths = useMemo(
+    () => files.map(filePath).filter((path) => matchesQuery(path, query)),
+    [files, query],
+  );
+  const visiblePaths = useMemo(
+    () =>
+      new Set(hideViewed ? matchingPaths.filter((path) => !viewedPaths.has(path)) : matchingPaths),
+    [matchingPaths, hideViewed, viewedPaths],
+  );
+  const visibleFiles = useMemo(
+    () => files.filter((file) => visiblePaths.has(filePath(file))),
+    [files, visiblePaths],
+  );
+  const visibleTree = useMemo(
+    () => (visiblePaths.size === files.length ? tree : filterTree(tree, visiblePaths)),
+    [tree, files.length, visiblePaths],
+  );
 
+  const commentsByPath = useStableGroups(review.comments);
+  const commentCounts = useMemo(
+    () => new Map([...commentsByPath].map(([path, list]) => [path, list.length])),
+    [commentsByPath],
+  );
   const feedback = hasFeedback(review);
 
   const copy = useCallback(async () => {
@@ -174,6 +181,8 @@ function Review({ diff, error, refreshing, onRefresh }: ReviewProps) {
           totalCount={files.length}
           query={query}
           onQueryChange={setQuery}
+          hideViewed={hideViewed}
+          onHideViewedChange={setHideViewed}
           fileId={fileId}
           viewed={viewedPaths}
           commentCounts={commentCounts}
@@ -200,12 +209,19 @@ function Review({ diff, error, refreshing, onRefresh }: ReviewProps) {
 
         {files.length === 0 ? (
           <p className={styles.empty}>No changes for {diff.label}.</p>
+        ) : matchingPaths.length === 0 ? (
+          <div className={styles.empty}>
+            <p>No files match “{query}”.</p>
+            <Button variant="outline" size="sm" onClick={() => setQuery("")}>
+              Clear filter
+            </Button>
+          </div>
         ) : (
           visibleFiles.length === 0 && (
             <div className={styles.empty}>
-              <p>No files match “{query}”.</p>
-              <Button variant="outline" size="sm" onClick={() => setQuery("")}>
-                Clear filter
+              <p>{query ? "All matching files are viewed." : "All files are viewed."}</p>
+              <Button variant="outline" size="sm" onClick={() => setHideViewed(false)}>
+                Show viewed files
               </Button>
             </div>
           )

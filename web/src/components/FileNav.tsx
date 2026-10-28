@@ -8,6 +8,7 @@ import {
   ChevronDown,
   ChevronRight,
   CircleCheck,
+  EyeOff,
   Folder,
   FolderOpen,
   List,
@@ -15,6 +16,7 @@ import {
   Search,
   X,
 } from "./icons";
+import { Button } from "./ui/Button";
 import { Input } from "./ui/Input";
 import { ToggleGroup } from "./ui/ToggleGroup";
 import styles from "./FileNav.module.css";
@@ -31,6 +33,8 @@ export type FileNavProps = {
   totalCount: number;
   query: string;
   onQueryChange: (query: string) => void;
+  hideViewed: boolean;
+  onHideViewedChange: (hideViewed: boolean) => void;
   fileId: ReadonlyMap<string, string>;
   viewed: ReadonlySet<string>;
   commentCounts: ReadonlyMap<string, number>;
@@ -42,6 +46,8 @@ export const FileNav = memo(function FileNav({
   totalCount,
   query,
   onQueryChange,
+  hideViewed,
+  onHideViewedChange,
   fileId,
   viewed,
   commentCounts,
@@ -71,6 +77,17 @@ export const FileNav = memo(function FileNav({
           matchCount={files.length}
           totalCount={totalCount}
         />
+        <Button
+          variant="outline"
+          size="icon-sm"
+          className={styles.hideViewed}
+          aria-label="Hide viewed files"
+          title="Hide viewed files"
+          aria-pressed={hideViewed}
+          onClick={() => onHideViewedChange(!hideViewed)}
+        >
+          <EyeOff />
+        </Button>
         <ToggleGroup
           label="File view"
           value={view}
@@ -83,7 +100,9 @@ export const FileNav = memo(function FileNav({
       </div>
       {files.length === 0 ? (
         <p className={styles.empty}>
-          {totalCount === 0 ? "No changed files" : "No matching files"}
+          {totalCount === 0
+            ? "No changed files"
+            : `No ${query ? "matching " : ""}${hideViewed ? "unviewed " : ""}files`}
         </p>
       ) : view === "tree" ? (
         <Tree nodes={tree} renderFile={(file, depth) => row(file, depth, false)} />

@@ -9,12 +9,15 @@ const tree = buildTree(demoFiles);
 const files = treeOrder(tree);
 
 const onQueryChange = vi.fn<(query: string) => void>();
+const onHideViewedChange = vi.fn<(hideViewed: boolean) => void>();
 const defaultProps: FileNavProps = {
   tree,
   files,
   totalCount: files.length,
   query: "",
   onQueryChange,
+  hideViewed: false,
+  onHideViewedChange,
   fileId: new Map(files.map((file, i) => [file.newPath, `file-${i}`])),
   viewed: new Set(),
   commentCounts: new Map(),
@@ -142,8 +145,27 @@ describe("FileNav", () => {
     expect(within(link(/notes\.md/)).queryByText("Viewed")).not.toBeInTheDocument();
   });
 
+  test("does report toggling when clicking hide viewed files", async () => {
+    const user = userEvent.setup();
+    const { rerender } = render(<FileNav {...defaultProps} />);
+    const toggle = screen.getByRole("button", { name: "Hide viewed files" });
+    expect(toggle).toHaveAttribute("aria-pressed", "false");
+    await user.click(toggle);
+    expect(onHideViewedChange.mock.calls).toEqual([[true]]);
+
+    rerender(<FileNav {...defaultProps} hideViewed />);
+    expect(toggle).toHaveAttribute("aria-pressed", "true");
+    await user.click(toggle);
+    expect(onHideViewedChange.mock.calls).toEqual([[true], [false]]);
+  });
+
   test("does say so when no files match", () => {
-    render(<FileNav {...defaultProps} tree={[]} files={[]} />);
+    render(<FileNav {...defaultProps} query="zzz" tree={[]} files={[]} />);
     expect(screen.getByText("No matching files")).toBeInTheDocument();
+  });
+
+  test("does say so when every file is viewed and hidden", () => {
+    render(<FileNav {...defaultProps} hideViewed tree={[]} files={[]} />);
+    expect(screen.getByText("No unviewed files")).toBeInTheDocument();
   });
 });

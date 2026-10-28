@@ -33,6 +33,11 @@
   padding-left: 2rem;
 }
 
+/* The match count and clear button only appear once there's text. */
+.search .searchInput:placeholder-shown {
+  padding-right: 0.5rem;
+}
+
 .matches {
   position: absolute;
   right: 1.875rem;
@@ -54,6 +59,15 @@
 }
 
 .clear:hover {
+  background: var(--accent);
+  color: var(--foreground);
+}
+
+.hideViewed {
+  color: var(--muted-foreground);
+}
+
+.hideViewed[aria-pressed="true"] {
   background: var(--accent);
   color: var(--foreground);
 }

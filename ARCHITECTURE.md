@@ -66,6 +66,7 @@ diff changed is automatically un-marked as viewed.
 | **Viewed tracking**           | A per-file **Viewed** checkbox collapses the file. A progress bar in the header shows _x/y viewed_. Viewed marks reset automatically when a file's diff changes.          |
 | **File navigation**           | Sidebar with **tree** view (collapsible folders, single-child chains compressed like `src/components`) or **list** view (filename + directory). The choice is remembered. |
 | **Filter**                    | Path search (case-insensitive; space-separated terms must all match) that narrows both the sidebar and the diff. Debounced; `/` focuses it, Esc clears it.                |
+| **Hide viewed files**         | A sidebar toggle that hides viewed files from both the sidebar and the diff, so only what's left to review shows. Remembered across reloads.                              |
 | **Refresh**                   | Reloads the diff from git without restarting.                                                                                                                             |
 
 ---
@@ -88,7 +89,7 @@ diff changed is automatically un-marked as viewed.
 ┌────────────────────┴──────────── Browser (React 19 SPA) ─────────────────────────────────┐
 │  App ─► useDiff (fetch) ─► Review                                                         │
 │                              ├── header: progress, refresh, Clear, Copy review            │
-│                              ├── FileNav: filter, tree/list                               │
+│                              ├── FileNav: filter, hide viewed, tree/list                 │
 │                              └── FileDiff × N: lines, selection, comments, Viewed         │
 │  State: useReview ⇄ localStorage     Highlighting: Shiki (lazy, per file)                 │
 └───────────────────────────────────────────────────────────────────────────────────────────┘
@@ -305,6 +306,7 @@ App                              load states (loading / error + Try again / read
     ├── header                   repo / label / base SHA, progress, refresh, Clear, Copy review
     ├── FileNav                  sidebar
     │   ├── FileSearch           owns raw input text + debounce timer
+    │   ├── Hide viewed files    toggle (state owned by Review)
     │   ├── ToggleGroup          tree ⇄ list (persisted)
     │   └── Tree / list → FileRow
     └── main
@@ -327,6 +329,7 @@ rather than being replaced by the error page, so unsaved drafts survive.
 | Diff data, loading/error/refreshing              | `useDiff` (in `App`)            | no (refetched)                                   |
 | Comments, summary, viewed marks                  | `useReview` (in `Review`)       | `localStorage["localreview:<repoRoot>:<label>"]` |
 | Applied filter query                             | `Review`                        | no                                               |
+| Hide viewed files                                | `Review` via `useLocalStorage`  | `localStorage["localreview:hideViewed"]`         |
 | Raw filter input text, debounce timer            | `FileSearch`                    | no                                               |
 | Tree vs list view                                | `FileNav` via `useLocalStorage` | `localStorage["localreview:fileView"]`           |
 | Collapsed folders                                | `Tree`                          | no                                               |
@@ -395,6 +398,10 @@ with sibling folder icons rather than chevrons.
 - Filtered-out `FileDiff`s are **hidden (`hidden` attribute), not unmounted**, so unsaved drafts,
   selections and collapse state survive.
 - `/` focuses the filter unless focus is already in an input, textarea or contenteditable.
+- **Hide viewed files** further removes viewed paths from the visible set, through the same
+  `hidden` mechanism. Marking a file viewed while it's on hides it straight away. When the
+  query matches files but all of them are viewed, the diff shows **Show viewed files** instead of
+  **Clear filter**.
 
 ### 7.7 Accessibility notes
 
