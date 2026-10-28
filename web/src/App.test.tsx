@@ -103,6 +103,45 @@ describe("App", () => {
     expect(section("src/server.ts")).toBeInTheDocument();
   });
 
+  test("does hide viewed files from the sidebar and diff when hide viewed is on", async () => {
+    const { user } = renderApp();
+    await ready();
+    await user.click(within(section("src/server.ts")).getByRole("checkbox", { name: "Viewed" }));
+    await user.click(screen.getByRole("button", { name: "Hide viewed files" }));
+
+    expect(screen.queryByRole("region", { name: "src/server.ts" })).not.toBeInTheDocument();
+    expect(
+      within(screen.getByRole("navigation", { name: "Files" })).queryByRole("link", {
+        name: /server\.ts/,
+      }),
+    ).not.toBeInTheDocument();
+    expect(section("docs/notes.md")).toBeInTheDocument();
+    expect(screen.getByText("1/4 viewed")).toBeInTheDocument();
+
+    await user.click(within(section("docs/notes.md")).getByRole("checkbox", { name: "Viewed" }));
+    expect(screen.queryByRole("region", { name: "docs/notes.md" })).not.toBeInTheDocument();
+  });
+
+  test("does show viewed files again from the empty diff", async () => {
+    const { user } = renderApp();
+    await ready();
+    const markViewed = (path: string) =>
+      user.click(within(section(path)).getByRole("checkbox", { name: "Viewed" }));
+    await markViewed("src/server.ts");
+    await markViewed("src/util/new.ts");
+    await markViewed("docs/notes.md");
+    await markViewed("scripts/setup.sh");
+    await user.click(screen.getByRole("button", { name: "Hide viewed files" }));
+    expect(screen.getByText("All files are viewed.")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Show viewed files" }));
+    expect(section("src/server.ts")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Hide viewed files" })).toHaveAttribute(
+      "aria-pressed",
+      "false",
+    );
+  });
+
   test("does copy all feedback as one Markdown document", async () => {
     const { user } = renderApp();
     await ready();

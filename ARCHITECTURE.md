@@ -67,6 +67,7 @@ diff changed is automatically un-marked as viewed.
 | **Viewed tracking**           | A per-file **Viewed** checkbox collapses the file. A progress bar in the header shows _x/y viewed_. Viewed marks reset automatically when a file's diff changes.          |
 | **File navigation**           | Sidebar with **tree** view (collapsible folders, single-child chains compressed like `src/components`) or **list** view (filename + directory). The choice is remembered. |
 | **Filter**                    | Path search (case-insensitive; space-separated terms must all match) that narrows both the sidebar and the diff. Debounced; `/` focuses it, Esc clears it.                |
+| **Hide viewed files**         | A sidebar toggle that hides viewed files from both the sidebar and the diff, so only what's left to review shows. Remembered across reloads.                              |
 | **Refresh**                   | Reloads the diff from git without restarting.                                                                                                                             |
 
 ---
@@ -89,7 +90,7 @@ diff changed is automatically un-marked as viewed.
 ┌────────────────────┴──────────── Browser (React 19 SPA) ─────────────────────────────────┐
 │  App ─► useDiff (fetch) ─► Review                                                         │
 │                              ├── header: progress, refresh, Clear, Copy review            │
-│                              ├── FileNav: filter, tree/list                               │
+│                              ├── FileNav: filter, hide viewed, tree/list                 │
 │                              └── FileDiff × N: lines, selection, comments, Viewed         │
 │  State: useReview ⇄ localStorage     Highlighting: Shiki (lazy, per file)                 │
 └───────────────────────────────────────────────────────────────────────────────────────────┘
@@ -132,7 +133,7 @@ localreview/
 │       │   ├── FileStatusBadge.tsx
 │       │   ├── icons.tsx     # inlined Lucide icons
 │       │   ├── ui/           # shadcn-style primitives: Button, Badge, Checkbox, Input,
-│       │   │                 #   Progress, Textarea, ToggleGroup
+│       │   │                 #   Progress, Textarea, ToggleGroup, useTooltip
 │       │   └── *.test.tsx    # component tests, next to each component
 │       ├── lib/
 │       │   ├── review.ts     # review types, line positions, fingerprints, range labels
@@ -306,6 +307,7 @@ App                              load states (loading / error + Try again / read
     ├── header                   repo / label / base SHA, progress, refresh, Clear, Copy review
     ├── FileNav                  sidebar
     │   ├── FileSearch           owns raw input text + debounce timer
+    │   ├── Hide viewed files    toggle (state owned by Review)
     │   ├── ToggleGroup          tree ⇄ list (persisted)
     │   └── Tree / list → FileRow
     └── main
@@ -328,6 +330,7 @@ rather than being replaced by the error page, so unsaved drafts survive.
 | Diff data, loading/error/refreshing              | `useDiff` (in `App`)            | no (refetched)                                   |
 | Comments, summary, viewed marks                  | `useReview` (in `Review`)       | `localStorage["localreview:<repoRoot>:<label>"]` |
 | Applied filter query                             | `Review`                        | no                                               |
+| Hide viewed files                                | `Review` via `useLocalStorage`  | `localStorage["localreview:hideViewed"]`         |
 | Raw filter input text, debounce timer            | `FileSearch`                    | no                                               |
 | Tree vs list view                                | `FileNav` via `useLocalStorage` | `localStorage["localreview:fileView"]`           |
 | Collapsed folders                                | `Tree`                          | no                                               |
@@ -396,6 +399,10 @@ with sibling folder icons rather than chevrons.
 - Filtered-out `FileDiff`s are **hidden (`hidden` attribute), not unmounted**, so unsaved drafts,
   selections and collapse state survive.
 - `/` focuses the filter unless focus is already in an input, textarea or contenteditable.
+- **Hide viewed files** further removes viewed paths from the visible set, through the same
+  `hidden` mechanism. Marking a file viewed while it's on hides it straight away. When the
+  query matches files but all of them are viewed, the diff shows **Show viewed files** instead of
+  **Clear filter**.
 
 ### 7.7 Accessibility notes
 
@@ -525,6 +532,13 @@ Rules:
   `default | outline | secondary | ghost | destructive`, sizes `default | sm | xs | icon |
   icon-sm | icon-xs`), `Badge`, `Checkbox` (styled native input), `Input`, `Progress` (styled
   native `<progress>`), `Textarea` (auto-growing via `field-sizing: content`), `ToggleGroup`.
+- **Tooltips** come from `useTooltip(content)`, which returns `triggerProps` to spread on an
+  icon button and the `tooltip` element to render next to it. It's positioned with
+  `@floating-ui/react-dom` (flip and shift keep it in the viewport) and portalled to `body` so the
+  sidebar's overflow can't clip it. It shows after 400 ms of hover, immediately on keyboard focus
+  but not on click, and hides on leave, blur, press or Esc. The tooltip only repeats the
+  trigger's `aria-label`, so it's `aria-hidden` rather than linked as a description. Used by the
+  file list toolbar (hide viewed, tree/list view) instead of native `title` tooltips.
 - **Icons** are Lucide SVG paths inlined in `components/icons.tsx` (ISC licence).
 - **Fonts:** Geist Sans and Geist Mono via `@fontsource-variable`.
 - **Layout:** a CSS grid with a sticky app header, a sticky scrollable sidebar and a main column.
@@ -688,30 +702,31 @@ bun run format     # oxfmt (write)
 
 ## 15. Decision log
 
-| #   | Decision                                                                                                 | Alternatives considered                                | Rationale                                                                                                                                                                     |
-| --- | -------------------------------------------------------------------------------------------------------- | ------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | **Bun** for CLI/server, **Vite** for the UI                                                              | Bun's built-in HTML bundler (`Bun.serve` routes)       | Vite was preferred for the frontend: mature HMR, plugin ecosystem, Vitest integration. Bun stays the runtime for fast startup and simple process/file APIs.                   |
-| 2   | **Own diff renderer**                                                                                    | `react-diff-view`, `@git-diff-view/react`              | Full control over markup, styling and interaction is the reason the project exists. A unified diff is a simple table.                                                         |
-| 3   | **Own unified-diff parser**                                                                              | `parse-diff`, `gitdiff-parser`                         | About 100 lines, no dependency, handles spaces in paths and header-like content inside hunks, and reused by the UI test fixtures.                                             |
-| 4   | **Stateless server; review state in `localStorage`**                                                     | Server-side JSON file, a file in `.git/`               | Simplest model. Survives refresh and restart, needs no cleanup, and keeps the server a pure git → JSON adapter.                                                               |
-| 5   | **Default target = merge-base with main vs working tree, plus untracked**                                | `HEAD` vs working tree; `main...HEAD` (commits only)   | Reviews everything on the branch, including in-progress agent changes, in one view.                                                                                           |
-| 6   | **Highlight whole files, map tokens by line number**                                                     | Highlight hunk lines only                              | Multi-line constructs (strings, comments, template literals) need full context to tokenise correctly.                                                                         |
-| 7   | **Shiki core + JS regex engine, lazy grammars**                                                          | Full Shiki bundle; Oniguruma WASM; Prism/highlight.js  | GitHub-quality highlighting, dual themes via CSS variables, no WASM, and only the languages in the diff are downloaded.                                                       |
-| 8   | **CSS Modules + hand-built shadcn look**                                                                 | Tailwind; shadcn/ui; Radix                             | A shadcn-like appearance without the dependency; full control; scoped styles.                                                                                                 |
-| 9   | **Comments anchored to new-side line numbers, old side for deletions; snippet captured at comment time** | Anchor by hunk/line index; store only line numbers     | New-side numbers are what an agent sees in the current file. Snippets keep the copied review meaningful even if the file changes later.                                       |
-| 10  | **Outdated comments are kept and surfaced**                                                              | Drop comments whose line vanished                      | Feedback is never silently lost.                                                                                                                                              |
-| 11  | **Viewed = stored fingerprint must match the current diff**                                              | Plain boolean                                          | Automatically re-flags files the agent changed after you reviewed them.                                                                                                       |
-| 12  | **Clear keeps viewed state**                                                                             | Clear everything                                       | Clearing usually happens after pasting feedback to an agent; review progress is still useful.                                                                                 |
-| 13  | **Diff order = tree order**                                                                              | Git's path order                                       | The main view, sidebar and copied Markdown all agree.                                                                                                                         |
-| 14  | **Filter hides rather than unmounts diffs**                                                              | Conditional rendering                                  | Unsaved drafts and collapse state survive filtering.                                                                                                                          |
-| 15  | **Debounce in the input's change handler, inside `FileSearch`**                                          | `useDeferredValue`; a debounced-value hook in `App`    | Debouncing in `App` still re-renders the whole tree on each keystroke. Owning the text locally keeps typing cheap, and clearing stays instant.                                |
-| 16  | **`content-visibility: auto` + memoised `FileDiff`**                                                     | Virtualised list                                       | Virtualisation complicates sticky headers, anchors, find-in-page and variable-height comment rows. `content-visibility` gets equivalent responsiveness with one CSS property. |
-| 17  | **Drag ends via a one-off `window` `mouseup` listener added on mousedown**                               | An effect that subscribes while dragging               | No window between mousedown and the effect subscribing; simpler.                                                                                                              |
-| 18  | **Three test layers; component tests render single components**                                          | Everything through `<App />`; everything in Playwright | Fast, precise failures at the owning component; `App` tests only for real cross-component wiring; Playwright reserved for browser-only concerns.                              |
-| 19  | **Vitest (happy-dom) for `web/`, `bun test` for `src/`**                                                 | One runner for both                                    | `src/` needs Bun APIs; `web/` benefits from the shared Vite pipeline. happy-dom is faster than jsdom and sufficient here.                                                     |
-| 20  | **Playwright: per-worker server, per-test repo reset**                                                   | A server and repo per test                             | Much faster E2E runs while keeping isolation.                                                                                                                                 |
-| 21  | **oxlint + oxfmt, warnings as errors, enforced by hooks and CI; Conventional Commits**                   | ESLint + Prettier; CI-only enforcement                 | Very fast, low config; enforced locally before anything is committed, and again in CI for anything that skipped the hooks.                                                    |
-| 22  | **Bind to 127.0.0.1; `bin` runs TypeScript source via Bun**                                              | 0.0.0.0; a compiled binary                             | Local-only tool; no build step needed for the CLI itself.                                                                                                                     |
+| #   | Decision                                                                                                 | Alternatives considered                                      | Rationale                                                                                                                                                                     |
+| --- | -------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | **Bun** for CLI/server, **Vite** for the UI                                                              | Bun's built-in HTML bundler (`Bun.serve` routes)             | Vite was preferred for the frontend: mature HMR, plugin ecosystem, Vitest integration. Bun stays the runtime for fast startup and simple process/file APIs.                   |
+| 2   | **Own diff renderer**                                                                                    | `react-diff-view`, `@git-diff-view/react`                    | Full control over markup, styling and interaction is the reason the project exists. A unified diff is a simple table.                                                         |
+| 3   | **Own unified-diff parser**                                                                              | `parse-diff`, `gitdiff-parser`                               | About 100 lines, no dependency, handles spaces in paths and header-like content inside hunks, and reused by the UI test fixtures.                                             |
+| 4   | **Stateless server; review state in `localStorage`**                                                     | Server-side JSON file, a file in `.git/`                     | Simplest model. Survives refresh and restart, needs no cleanup, and keeps the server a pure git → JSON adapter.                                                               |
+| 5   | **Default target = merge-base with main vs working tree, plus untracked**                                | `HEAD` vs working tree; `main...HEAD` (commits only)         | Reviews everything on the branch, including in-progress agent changes, in one view.                                                                                           |
+| 6   | **Highlight whole files, map tokens by line number**                                                     | Highlight hunk lines only                                    | Multi-line constructs (strings, comments, template literals) need full context to tokenise correctly.                                                                         |
+| 7   | **Shiki core + JS regex engine, lazy grammars**                                                          | Full Shiki bundle; Oniguruma WASM; Prism/highlight.js        | GitHub-quality highlighting, dual themes via CSS variables, no WASM, and only the languages in the diff are downloaded.                                                       |
+| 8   | **CSS Modules + hand-built shadcn look**                                                                 | Tailwind; shadcn/ui; Radix                                   | A shadcn-like appearance without the dependency; full control; scoped styles.                                                                                                 |
+| 9   | **Comments anchored to new-side line numbers, old side for deletions; snippet captured at comment time** | Anchor by hunk/line index; store only line numbers           | New-side numbers are what an agent sees in the current file. Snippets keep the copied review meaningful even if the file changes later.                                       |
+| 10  | **Outdated comments are kept and surfaced**                                                              | Drop comments whose line vanished                            | Feedback is never silently lost.                                                                                                                                              |
+| 11  | **Viewed = stored fingerprint must match the current diff**                                              | Plain boolean                                                | Automatically re-flags files the agent changed after you reviewed them.                                                                                                       |
+| 12  | **Clear keeps viewed state**                                                                             | Clear everything                                             | Clearing usually happens after pasting feedback to an agent; review progress is still useful.                                                                                 |
+| 13  | **Diff order = tree order**                                                                              | Git's path order                                             | The main view, sidebar and copied Markdown all agree.                                                                                                                         |
+| 14  | **Filter hides rather than unmounts diffs**                                                              | Conditional rendering                                        | Unsaved drafts and collapse state survive filtering.                                                                                                                          |
+| 15  | **Debounce in the input's change handler, inside `FileSearch`**                                          | `useDeferredValue`; a debounced-value hook in `App`          | Debouncing in `App` still re-renders the whole tree on each keystroke. Owning the text locally keeps typing cheap, and clearing stays instant.                                |
+| 16  | **`content-visibility: auto` + memoised `FileDiff`**                                                     | Virtualised list                                             | Virtualisation complicates sticky headers, anchors, find-in-page and variable-height comment rows. `content-visibility` gets equivalent responsiveness with one CSS property. |
+| 17  | **Drag ends via a one-off `window` `mouseup` listener added on mousedown**                               | An effect that subscribes while dragging                     | No window between mousedown and the effect subscribing; simpler.                                                                                                              |
+| 18  | **Three test layers; component tests render single components**                                          | Everything through `<App />`; everything in Playwright       | Fast, precise failures at the owning component; `App` tests only for real cross-component wiring; Playwright reserved for browser-only concerns.                              |
+| 19  | **Vitest (happy-dom) for `web/`, `bun test` for `src/`**                                                 | One runner for both                                          | `src/` needs Bun APIs; `web/` benefits from the shared Vite pipeline. happy-dom is faster than jsdom and sufficient here.                                                     |
+| 20  | **Playwright: per-worker server, per-test repo reset**                                                   | A server and repo per test                                   | Much faster E2E runs while keeping isolation.                                                                                                                                 |
+| 21  | **oxlint + oxfmt, warnings as errors, enforced by hooks and CI; Conventional Commits**                   | ESLint + Prettier; CI-only enforcement                       | Very fast, low config; enforced locally before anything is committed, and again in CI for anything that skipped the hooks.                                                    |
+| 22  | **Bind to 127.0.0.1; `bin` runs TypeScript source via Bun**                                              | 0.0.0.0; a compiled binary                                   | Local-only tool; no build step needed for the CLI itself.                                                                                                                     |
+| 23  | **Floating UI (`@floating-ui/react-dom`) for tooltips**                                                  | Native `title`; CSS anchor positioning; `@floating-ui/react` | Native tooltips are slow and unstyled. Only the positioning core is needed (small, handles flip/shift and scrolling); hover/focus logic is a few lines in `useTooltip`.       |
 
 ---
 
