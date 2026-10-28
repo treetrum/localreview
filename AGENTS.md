@@ -24,7 +24,6 @@ non-trivial changes and keep it up to date when behaviour or structure changes.
 
 - Always install the latest dependency versions.
 - Comments only where they add a non-obvious _why_.
-- Never commit or push unless explicitly asked.
 - Conventional Commits for commit messages and PR titles (enforced by `.githooks/commit-msg` and CI).
 - Lint exceptions live in `.oxlintrc.json`, never inline.
 - Styling: CSS Modules plus the design tokens in `web/src/styles/global.css`. No Tailwind or
