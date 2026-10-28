@@ -25,6 +25,12 @@
       {
         "controlComponents": ["Checkbox"]
       }
+    ],
+    "jsx-a11y/control-has-associated-label": [
+      "error",
+      {
+        "ignoreElements": ["td"]
+      }
     ]
   },
   "overrides": [

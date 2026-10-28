@@ -222,3 +222,44 @@
   gap: 0.5rem;
   max-width: 48rem;
 }
+
+.split .code + .num {
+  border-left-width: 1px;
+}
+
+.split .num.add {
+  background: var(--diff-add-gutter);
+}
+
+.split .num.del {
+  background: var(--diff-del-gutter);
+}
+
+.split .num.expanded {
+  background: color-mix(in oklch, var(--muted) 60%, transparent);
+}
+
+.split .num.selected,
+.split .code.selected {
+  background: var(--diff-selected-bg);
+}
+
+.empty {
+  background: var(--muted);
+}
+
+/* Only the hovered side's + appears. */
+.pair .num:hover .plus,
+.pair .num:has(+ .code:hover) .plus {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.split .commentRow td {
+  padding-left: 4.25rem;
+  vertical-align: top;
+}
+
+.split .commentRow td + td {
+  border-left-width: 1px;
+}

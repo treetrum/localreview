@@ -50,6 +50,8 @@ In the browser:
 - ⌘/Ctrl+↵ submits a comment, Esc cancels.
 - Tick **Viewed** to collapse a file. If the file's diff changes later, it's un-marked
   automatically.
+- Switch between a **unified** and a **split** (side-by-side) diff with the toggle in the header.
+  The choice is remembered.
 - `/` focuses the file filter; Esc clears it.
 - **Refresh** reloads the diff from git after the agent edits files. Comments are kept.
 - **Copy review** copies all feedback as Markdown. **Clear** removes feedback but keeps viewed

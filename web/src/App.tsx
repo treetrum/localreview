@@ -2,13 +2,15 @@ import { useCallback, useMemo, useState } from "react";
 import { filePath, type DiffResponse } from "../../shared/types";
 import { FileDiff } from "./components/FileDiff";
 import { FileNav } from "./components/FileNav";
-import { Check, Copy, RefreshCw, TriangleAlert } from "./components/icons";
+import { Check, Columns2, Copy, RefreshCw, Rows2, TriangleAlert } from "./components/icons";
 import { Button } from "./components/ui/Button";
 import { Progress } from "./components/ui/Progress";
 import { Textarea } from "./components/ui/Textarea";
+import { ToggleGroup } from "./components/ui/ToggleGroup";
 import { matchesQuery } from "./lib/filter";
 import { formatReview } from "./lib/format";
 import { fileFingerprint, hasFeedback, storageKey, type ReviewComment } from "./lib/review";
+import { isDiffView, type DiffView } from "./lib/rows";
 import { buildTree, filterTree, treeOrder } from "./lib/tree";
 import { useCopy } from "./lib/useCopy";
 import { useDiff } from "./lib/useDiff";
@@ -64,6 +66,7 @@ function Review({ diff, error, refreshing, onRefresh }: ReviewProps) {
   const { review, actions } = useReview(storageKey(diff));
   const [query, setQuery] = useState("");
   const [hideViewed, setHideViewed] = useLocalStorage("localreview:hideViewed", false, isBoolean);
+  const [view, setView] = useLocalStorage<DiffView>("localreview:diffView", "unified", isDiffView);
   const [copied, copyText] = useCopy();
 
   const tree = useMemo(() => buildTree(diff.files), [diff.files]);
@@ -148,6 +151,15 @@ function Review({ diff, error, refreshing, onRefresh }: ReviewProps) {
           </span>
         </div>
         <div className={styles.actions}>
+          <ToggleGroup
+            label="Diff view"
+            value={view}
+            onChange={setView}
+            options={[
+              { value: "unified", label: "Unified view", icon: <Rows2 /> },
+              { value: "split", label: "Split view", icon: <Columns2 /> },
+            ]}
+          />
           <Button
             variant="ghost"
             size="icon-sm"
@@ -234,6 +246,7 @@ function Review({ diff, error, refreshing, onRefresh }: ReviewProps) {
               comments={commentsByPath.get(path) ?? EMPTY_COMMENTS}
               actions={actions}
               hidden={!visiblePaths.has(path)}
+              view={view}
             />
           );
         })}

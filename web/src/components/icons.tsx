@@ -118,6 +118,18 @@ export const List = icon(
     <path d="M8 6h13" />
   </>,
 );
+export const Rows2 = icon(
+  <>
+    <rect width="18" height="18" x="3" y="3" rx="2" />
+    <path d="M3 12h18" />
+  </>,
+);
+export const Columns2 = icon(
+  <>
+    <rect width="18" height="18" x="3" y="3" rx="2" />
+    <path d="M12 3v18" />
+  </>,
+);
 export const TriangleAlert = icon(
   <>
     <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3" />

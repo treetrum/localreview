@@ -56,7 +56,7 @@ diff changed is automatically un-marked as viewed.
 | Area                          | Behaviour                                                                                                                                                                 |
 | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Diff targets**              | Default: current branch (committed + uncommitted + untracked) vs its merge-base with `main`/`master`. Also: any base ref, `--staged`, `--commit <sha>`.                   |
-| **Diff view**                 | Unified diff per file, with hunk headers, old/new line numbers, wrapped lines, sticky file headers and syntax highlighting (light and dark).                              |
+| **Diff view**                 | **Unified** or **split** (side by side, like GitHub), toggled in the header and remembered. Hunk headers, line numbers, wrapped lines, sticky headers, highlighting.      |
 | **Expand context**            | Hunk headers carry GitHub-style expand buttons: 20 lines up or down, or all of a gap of 20 or fewer. **Expand all lines** in the file header shows the whole file.        |
 | **Line comments**             | Hover a line and click **+**. Drag across rows, or shift-click a second **+**, for a range. Comments on deleted lines are anchored to the old side.                       |
 | **File and overall comments** | **Comment on file** per file; an **Overall feedback** box for the whole change.                                                                                           |
@@ -90,7 +90,7 @@ diff changed is automatically un-marked as viewed.
                      │
 ┌────────────────────┴──────────── Browser (React 19 SPA) ─────────────────────────────────┐
 │  App ─► useDiff (fetch) ─► Review                                                         │
-│                              ├── header: progress, refresh, Clear, Copy review            │
+│                              ├── header: progress, view toggle, refresh, Clear, Copy      │
 │                              ├── FileNav: filter, hide viewed, tree/list                 │
 │                              └── FileDiff × N: lines, selection, comments, Viewed         │
 │  State: useReview ⇄ localStorage     Highlighting: Shiki (lazy, per file)                 │
@@ -141,6 +141,7 @@ localreview/
 │       │   ├── expand.ts     # diff rows: hunks merged with revealed context lines
 │       │   ├── format.ts     # Markdown output
 │       │   ├── tree.ts       # file tree building, ordering and filtering
+│       │   ├── rows.ts       # split view: pairs old/new rows from buildRows
 │       │   ├── filter.ts     # path matching
 │       │   ├── highlight.ts  # Shiki setup, language detection, serial queue
 │       │   ├── useDiff.ts, useReview.ts, useHighlightedFile.ts, useLocalStorage.ts
@@ -306,7 +307,8 @@ A file's identity in the UI is `filePath(file)`, which is `oldPath` for deleted 
 ```
 App                              load states (loading / error + Try again / ready)
 └── Review  key=storageKey       owns review state, filter query, derived data
-    ├── header                   repo / label / base SHA, progress, refresh, Clear, Copy review
+    ├── header                   repo / label / base SHA, progress, unified ⇄ split, refresh,
+    │                            Clear, Copy review
     ├── FileNav                  sidebar
     │   ├── FileSearch           owns raw input text + debounce timer
     │   ├── Hide viewed files    toggle (state owned by Review)
@@ -335,6 +337,7 @@ rather than being replaced by the error page, so unsaved drafts survive.
 | Hide viewed files                                | `Review` via `useLocalStorage`  | `localStorage["localreview:hideViewed"]`         |
 | Raw filter input text, debounce timer            | `FileSearch`                    | no                                               |
 | Tree vs list view                                | `FileNav` via `useLocalStorage` | `localStorage["localreview:fileView"]`           |
+| Unified vs split diff view                       | `Review` via `useLocalStorage`  | `localStorage["localreview:diffView"]`           |
 | Collapsed folders                                | `Tree`                          | no                                               |
 | Collapsed file, line selection, drag, file draft | `FileDiff`                      | no                                               |
 | Revealed context lines                           | `FileDiff`                      | no (lines with comments are always revealed)     |
@@ -378,6 +381,20 @@ with sibling folder icons rather than chevrons.
 - Existing comments render in a row directly below the line their range **ends** on (looked up by
   `posKey(range.end)`). Comments whose end line no longer exists are shown as _Outdated_ (with
   their captured snippet) at the top of the file.
+
+### 7.4.1 Unified and split views
+
+`buildRows` (see 7.5) gives one row per line, which the unified view renders directly. For the
+split view, `splitRows` in `lib/rows.ts` regroups those rows into old/new pairs: context and
+expanded lines appear on both sides and, within each run of changes, the nth deletion is paired
+with the nth addition; the shorter side gets empty cells. Gap rows pass through unchanged, so
+expanding context works the same in both views. Selection, drag, comment payloads and the copied
+Markdown don't depend on the view, and switching views keeps an open selection.
+
+In the split view a deleted line's **+** is on the left; added and context lines' **+** is on the
+right only (so each button keeps a unique accessible name). Comments and the comment form render
+in a row below the pair, in the half their line belongs to. The view is chosen in the header and
+passed to every `FileDiff` as a prop.
 
 ### 7.5 Expanding context (`lib/expand.ts`)
 
@@ -614,7 +631,9 @@ runtime is cleaner than forcing either one onto the other.
   - `Comment.test.tsx`: submit and cancel keys, blank comments, edit and delete.
   - `FileDiff.test.tsx`: the exact `addComment` payloads for deleted lines, shift-click ranges,
     ranges spanning both sides, drags and keyboard activation; comment placement; outdated
-    comments; expanding gaps, comments on revealed lines and expand/collapse all; the fingerprint passed to `setViewed`; collapse following `viewed`; binary files.
+    comments; expanding gaps, comments on revealed lines and expand/collapse all; the fingerprint
+    passed to `setViewed`; collapse following `viewed`; binary files; and in the split view,
+    pairing, cross-side ranges, drags and which half comments render in.
   - `FileNav.test.tsx`: tree and list views, the debounced `onQueryChange` (fake timers), Esc and
     ✕ clearing, the parent clearing the query, the `/` shortcut, match counts.
   - `useReview.test.ts`: persistence, per-key isolation, edit and delete, Clear semantics,
@@ -628,7 +647,8 @@ runtime is cleaner than forcing either one onto the other.
   - refresh un-marking only changed files;
   - filtering keeping unsaved drafts, and the main-area **Clear filter** button;
   - copy combining all comments; sidebar comment counts;
-  - Clear confirm and cancel.
+  - Clear confirm and cancel;
+  - the unified/split toggle switching every file and persisting.
 - **Fixtures** (`web/src/test/fixtures.ts`): the demo diff is a **readable unified diff string
   parsed with the real `parseDiff`**, plus an untracked file from `addedFile`, not a hand-written
   JSON blob. `mockComment` is the base comment.
@@ -695,6 +715,7 @@ bun run format     # oxfmt (write)
 | `react/react-in-jsx-scope`                                              | everywhere | The automatic JSX runtime (`jsx: react-jsx`) doesn't need `React` in scope. |
 | `import/no-unassigned-import` (allow)                                   | everywhere | CSS, font and jest-dom imports are side-effect-only by design.              |
 | `jsx-a11y/label-has-associated-control` (`controlComponents: Checkbox`) | everywhere | `Checkbox` renders a native input inside its label.                         |
+| `jsx-a11y/control-has-associated-label` (`ignoreElements: td`)          | everywhere | The split view's empty half-row cells are table cells, not controls.        |
 | `no-empty-pattern`                                                      | `e2e/**`   | Playwright requires `{}` destructuring for fixtures without dependencies.   |
 | `oxc/no-map-spread`                                                     | test files | Clashes with the preferred style of building mock data with object spread.  |
 
@@ -758,7 +779,6 @@ bun run format     # oxfmt (write)
 
 **Limitations:**
 
-- **Unified view only.** No split view.
 - **Expansion state isn't persisted** beyond lines with comments, and files without contents
   (over 512 KB) can't be expanded.
 - **No live reload of the diff.** You press refresh after files change (planned: `fs.watch` +
@@ -781,7 +801,6 @@ bun run format     # oxfmt (write)
 - Live diff updates (watch the repo, push over SSE; comments and viewed state already carry over
   thanks to fingerprints).
 - Keyboard navigation (next/previous file and hunk, `c` to comment, `v` to toggle viewed).
-- Split view.
 - A "Finish review" mode that prints the Markdown to stdout and exits, so an agent can run
   `localreview` itself and wait for feedback.
 - Highlighting in a Web Worker; a compiled single binary with embedded assets
