@@ -48,6 +48,30 @@ export const demoFiles: DiffFile[] = [
   addedFile("scripts/setup.sh", "#!/bin/sh\necho hi\n", "untracked"),
 ];
 
+const filler = (from: number, to: number) =>
+  Array.from({ length: to - from + 1 }, (_, i) => `// line ${from + i}`);
+
+/** New contents of src/server.ts matching its hunks: lines 1–2, 12–21 and 25–50 are unchanged. */
+export const demoServerContent = [
+  'import { serve } from "bun";',
+  "",
+  "const port = 3000;",
+  "",
+  "serve({",
+  "    async fetch(req) {",
+  "      const url = new URL(req.url);",
+  '      if (url.pathname === "/health") return new Response("ok");',
+  '      return new Response("hello");',
+  "    },",
+  "});",
+  ...filler(12, 21),
+  "export function log() {",
+  '  console.log("new");',
+  "}",
+  ...filler(25, 50),
+  "",
+].join("\n");
+
 export const demoDiff: DiffResponse = {
   repoName: "demo",
   repoRoot: "/tmp/demo",

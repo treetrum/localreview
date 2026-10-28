@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { demoFiles, mockComment } from "../test/fixtures";
+import { demoFiles, demoServerContent, mockComment } from "../test/fixtures";
 import { formatReview } from "./format";
 import type { ReviewComment } from "./review";
 import { buildTree, treeOrder } from "./tree";
@@ -124,6 +124,27 @@ Extract the routing.
       ],
     });
     expect(markdown).toContain("### Line 99 (outdated)");
+  });
+
+  test("does not mark comments outdated when their line is outside the hunks but in the file", () => {
+    const withContent = files.map((file) =>
+      file.newPath === "src/server.ts" ? { ...file, newContent: demoServerContent } : file,
+    );
+    const markdown = formatReview({
+      label: "x",
+      files: withContent,
+      summary: "",
+      comments: [
+        comment({
+          range: { start: { side: "new", line: 30 }, end: { side: "new", line: 30 } },
+          snippet: [{ type: "context", content: "// line 30" }],
+          body: "below",
+        }),
+        comment({ id: "c2", body: "above" }),
+      ],
+    });
+    expect(markdown).toContain("### Line 30\n");
+    expect(markdown.indexOf("above")).toBeLessThan(markdown.indexOf("below"));
   });
 
   test("does lengthen the fence when the snippet contains backticks", () => {
