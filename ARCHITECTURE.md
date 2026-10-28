@@ -734,7 +734,8 @@ bun run format     # oxfmt (write)
   - `e2e`: installs Chromium with system dependencies and runs `bun run test:e2e`; on failure it
     uploads the Playwright report and traces as an artifact.
 - **`preview.yml`** deploys a live preview of each same-repo PR to Cloudflare Pages
-  (`pr-<number>.localreview.pages.dev`) and posts the URL as a sticky PR comment. When the PR
+  (`pr-<number>.localreview.pages.dev`) and posts the URL as a sticky PR comment. Pushes to `main`
+  deploy to the production URL, `localreview.pages.dev`, so it always shows `main`. When a PR
   closes, a `cleanup` job deletes that PR's deployments through the Cloudflare API. The UI only
   talks to the server through `GET /api/diff`, so `scripts/preview-snapshot.ts` builds a fixed demo
   repo and writes its diff to `dist/api/diff` after the build, and the static site works without

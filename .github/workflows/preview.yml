@@ -3,9 +3,11 @@ name: Preview
 on:
   pull_request:
     types: [opened, synchronize, reopened, closed]
+  push:
+    branches: [main]
 
 concurrency:
-  group: preview-${{ github.event.pull_request.number }}
+  group: preview-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 permissions:
@@ -16,9 +18,14 @@ jobs:
   deploy:
     name: Deploy preview to Cloudflare Pages
     # Fork PRs don't get secrets, so they can't deploy.
-    if: github.event.action != 'closed' && github.event.pull_request.head.repo.full_name == github.repository
+    if: >-
+      github.event_name == 'push' ||
+      (github.event.action != 'closed' && github.event.pull_request.head.repo.full_name == github.repository)
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    env:
+      # main is the production branch, served at the project's root URL.
+      BRANCH: ${{ github.event_name == 'push' && 'main' || format('pr-{0}', github.event.pull_request.number) }}
     steps:
       - uses: actions/checkout@v5
       - uses: oven-sh/setup-bun@v2
@@ -39,8 +46,9 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           wranglerVersion: "4"
-          command: pages deploy dist --project-name=localreview --branch=pr-${{ github.event.pull_request.number }} --commit-dirty=true
-      - uses: marocchino/sticky-pull-request-comment@v2
+          command: pages deploy dist --project-name=localreview --branch=${{ env.BRANCH }} --commit-dirty=true
+      - if: github.event_name == 'pull_request'
+        uses: marocchino/sticky-pull-request-comment@v2
         with:
           header: preview
           message: |
