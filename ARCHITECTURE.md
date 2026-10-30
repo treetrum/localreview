@@ -627,6 +627,11 @@ All three layers run in CI on every pull request.
 `src/` needs for `Bun.spawn`, `Bun.serve` and `Bun.file`; under plain Node the server tests fail
 with `Bun is not defined`. Filter with `--project web` or `--project server`.
 
+The `web` project sets `isolate: false`, so each worker reuses one happy-dom across files rather
+than building one per file. That only stays safe while `web/src/test/setup.ts` undoes everything
+a test can leave behind; prefer `vi.stubGlobal` over assigning globals, and avoid module-level
+`vi.mock` (the module cache is shared between files).
+
 ### 13.2 Component tests
 
 - **Each component is tested on its own, next to its file:**

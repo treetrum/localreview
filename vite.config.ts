@@ -27,6 +27,9 @@ export default defineConfig({
           include: ["src/**/*.test.{ts,tsx}"],
           setupFiles: [fromRoot("./web/src/test/setup.ts")],
           clearMocks: true,
+          // Reuses one happy-dom per worker instead of one per file (~30% faster). Safe because
+          // setup.ts resets the DOM, storage, timers and stubbed globals after every test.
+          isolate: false,
         },
       },
       {
