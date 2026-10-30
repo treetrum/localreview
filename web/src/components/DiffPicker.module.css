@@ -80,7 +80,7 @@
 }
 
 .option[aria-pressed="true"] {
-  background: var(--diff-selected-bg);
+  background: color-mix(in oklch, var(--diff-rename) 14%, transparent);
 }
 
 .option:disabled {
