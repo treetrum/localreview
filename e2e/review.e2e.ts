@@ -151,3 +151,23 @@ test("un-marks a viewed file when it changes on disk and the diff is refreshed",
   await expect(todo.getByRole("checkbox", { name: "Viewed" })).toBeChecked();
   await expect(page.getByText("1/4 viewed")).toBeVisible();
 });
+
+test("switches to uncommitted changes and a single commit, keeping the pick on reload", async ({
+  page,
+}) => {
+  await page.getByRole("button", { name: "feature vs main" }).click();
+  await page.getByRole("button", { name: "Uncommitted changes" }).click();
+  await expect(page.getByRole("button", { name: "Uncommitted changes on feature" })).toBeVisible();
+  await expect(nav(page).getByRole("link")).toHaveText([/todo\.txt/, /long\.ts/, /README\.md/]);
+
+  await page.getByRole("button", { name: "Uncommitted changes on feature" }).click();
+  await expect(page.getByRole("heading", { name: "Commits on feature" })).toBeVisible();
+  await page.getByRole("button", { name: "feature work" }).click();
+  await expect(page.getByRole("button", { name: /^[0-9a-f]{7} feature work$/ })).toBeVisible();
+  await expect(nav(page).getByRole("link")).toHaveText([/app\.ts/]);
+
+  await page.reload();
+  await expect(page.getByRole("button", { name: /^[0-9a-f]{7} feature work$/ })).toBeVisible();
+  await page.goBack();
+  await expect(page.getByRole("button", { name: "Uncommitted changes on feature" })).toBeVisible();
+});

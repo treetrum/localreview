@@ -22,7 +22,7 @@
 
 .title {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 0.625rem;
   min-width: 0;
 }
@@ -30,13 +30,6 @@
 .repo {
   font-size: 0.9375rem;
   font-weight: 600;
-}
-
-.label {
-  overflow: hidden;
-  color: var(--muted-foreground);
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .sha {
@@ -130,6 +123,11 @@
   color: var(--foreground);
   font-size: 1rem;
   font-weight: 600;
+}
+
+.stateActions {
+  display: flex;
+  gap: 0.5rem;
 }
 
 .errorText {

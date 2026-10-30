@@ -1,25 +1,24 @@
 import { stat } from "node:fs/promises";
 import { join, normalize } from "node:path";
-import type { ErrorResponse } from "../shared/types";
-import { GitError, loadDiff, type DiffTarget } from "./git";
+import { fromSearchParams, type DiffRequest, type ErrorResponse } from "../shared/types";
+import { GitError, loadDiff } from "./git";
 
 export const DEFAULT_PORT = 4180;
 const PORT_ATTEMPTS = 20;
 
 export type ServerOptions = {
   cwd: string;
-  target: DiffTarget;
   distDir: string;
   /** An explicit port is strict; otherwise the first free port from DEFAULT_PORT is used. */
   port?: number;
 };
 
-export function startServer({ cwd, target, distDir, port }: ServerOptions) {
+export function startServer({ cwd, distDir, port }: ServerOptions) {
   const serve = (candidate: number) =>
     Bun.serve({
       hostname: "127.0.0.1",
       port: candidate,
-      fetch: (req) => handle(req, cwd, target, distDir),
+      fetch: (req) => handle(req, cwd, distDir),
     });
 
   if (port !== undefined) return serve(port);
@@ -33,20 +32,22 @@ export function startServer({ cwd, target, distDir, port }: ServerOptions) {
   }
 }
 
-async function handle(
-  req: Request,
-  cwd: string,
-  target: DiffTarget,
-  distDir: string,
-): Promise<Response> {
+async function handle(req: Request, cwd: string, distDir: string): Promise<Response> {
   if (req.method !== "GET" && req.method !== "HEAD") {
     return new Response("Method not allowed", { status: 405 });
   }
   const url = new URL(req.url);
 
   if (url.pathname === "/api/diff") {
+    let request: DiffRequest;
     try {
-      return Response.json(await loadDiff(cwd, target), {
+      request = fromSearchParams(url.searchParams);
+    } catch (error) {
+      const body: ErrorResponse = { error: (error as Error).message };
+      return Response.json(body, { status: 400 });
+    }
+    try {
+      return Response.json(await loadDiff(cwd, request), {
         headers: { "Cache-Control": "no-store" },
       });
     } catch (error) {

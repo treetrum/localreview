@@ -23,7 +23,7 @@ beforeAll(() => {
   writeFileSync(join(distDir, "assets", "app.js"), "console.log(1)");
   writeFileSync(join(tmpdir(), "localreview-secret.txt"), "secret");
 
-  server = startServer({ cwd: repo.root, target: { kind: "branch" }, distDir, port: 0 });
+  server = startServer({ cwd: repo.root, distDir, port: 0 });
   base = `http://127.0.0.1:${server.port}`;
 });
 
@@ -41,20 +41,23 @@ describe("server", () => {
     expect(body.files.map((file) => file.newPath)).toEqual(["a.ts"]);
   });
 
+  test("does diff the target given in the query string", async () => {
+    const res = await fetch(`${base}/api/diff?target=staged`);
+    const body = (await res.json()) as DiffResponse;
+    expect(body.target).toEqual({ kind: "staged" });
+    expect(body.files).toEqual([]);
+  });
+
   test("does return the git error with status 500 when the diff fails", async () => {
-    const bad = startServer({
-      cwd: repo.root,
-      target: { kind: "branch", base: "missing" },
-      distDir,
-      port: 0,
-    });
-    try {
-      const res = await fetch(`http://127.0.0.1:${bad.port}/api/diff`);
-      expect(res.status).toBe(500);
-      expect(await res.json()).toEqual({ error: "Unknown revision: missing" });
-    } finally {
-      bad.stop(true);
-    }
+    const res = await fetch(`${base}/api/diff?target=branch&base=missing`);
+    expect(res.status).toBe(500);
+    expect(await res.json()).toEqual({ error: "Unknown revision: missing" });
+  });
+
+  test("does return 400 when the query string names an unknown target", async () => {
+    const res = await fetch(`${base}/api/diff?target=nope`);
+    expect(res.status).toBe(400);
+    expect(await res.json()).toEqual({ error: "Unknown diff target: nope" });
   });
 
   test("does serve static files from dist", async () => {
@@ -77,8 +80,8 @@ describe("server", () => {
   });
 
   test("does try the next port when the default is in use", () => {
-    const first = startServer({ cwd: repo.root, target: { kind: "branch" }, distDir });
-    const second = startServer({ cwd: repo.root, target: { kind: "branch" }, distDir });
+    const first = startServer({ cwd: repo.root, distDir });
+    const second = startServer({ cwd: repo.root, distDir });
     try {
       expect(second.port).toBeGreaterThan(first.port ?? 0);
     } finally {
@@ -88,8 +91,6 @@ describe("server", () => {
   });
 
   test("does throw when an explicit port is in use", () => {
-    expect(() =>
-      startServer({ cwd: repo.root, target: { kind: "branch" }, distDir, port: server.port }),
-    ).toThrow();
+    expect(() => startServer({ cwd: repo.root, distDir, port: server.port })).toThrow();
   });
 });

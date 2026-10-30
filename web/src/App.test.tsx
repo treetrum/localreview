@@ -32,6 +32,55 @@ describe("App", () => {
     await ready();
   });
 
+  test("does offer the default diff when the diff in the URL fails to load", async () => {
+    window.history.replaceState(null, "", "/?target=staged");
+    const { user, respond, fetchMock } = renderApp({ status: 500, body: { error: "boom" } });
+    expect(await screen.findByText("boom")).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenLastCalledWith("/api/diff?target=staged", { cache: "no-store" });
+
+    respond({ status: 200, body: demoDiff });
+    await user.click(screen.getByRole("button", { name: "Show the default diff" }));
+    await ready();
+    expect(fetchMock).toHaveBeenLastCalledWith("/api/diff", { cache: "no-store" });
+    expect(window.location.search).toBe("");
+  });
+
+  test("does load the picked diff, keep the base and record it in the URL", async () => {
+    window.history.replaceState(null, "", "/?base=origin%2Fmain");
+    const { user, respond, fetchMock } = renderApp();
+    await ready();
+
+    const staged = { ...demoDiff, label: "Staged changes on feature", files: [] };
+    respond({ status: 200, body: { ...staged, target: { kind: "staged" } } });
+    await user.click(screen.getByRole("button", { name: "feature vs main" }));
+    await user.click(screen.getByRole("button", { name: "Staged changes" }));
+
+    expect(
+      await screen.findByText("No changes for Staged changes on feature."),
+    ).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenLastCalledWith("/api/diff?target=staged&base=origin%2Fmain", {
+      cache: "no-store",
+    });
+    expect(window.location.search).toBe("?target=staged&base=origin%2Fmain");
+  });
+
+  test("does keep separate feedback for each diff", async () => {
+    const { user, respond } = renderApp();
+    await ready();
+    await user.type(screen.getByRole("textbox", { name: "Overall feedback" }), "Branch note");
+
+    respond({ status: 200, body: { ...demoDiff, label: "Uncommitted changes on feature" } });
+    await user.click(screen.getByRole("button", { name: "feature vs main" }));
+    await user.click(screen.getByRole("button", { name: "Uncommitted changes" }));
+    await screen.findByRole("button", { name: "Uncommitted changes on feature" });
+    expect(screen.getByRole("textbox", { name: "Overall feedback" })).toHaveValue("");
+
+    respond({ status: 200, body: demoDiff });
+    window.history.back();
+    await screen.findByRole("button", { name: "feature vs main" });
+    expect(screen.getByRole("textbox", { name: "Overall feedback" })).toHaveValue("Branch note");
+  });
+
   test("does say so when there are no changes", async () => {
     renderApp({ status: 200, body: { ...demoDiff, files: [] } });
     expect(await screen.findByText("No changes for feature vs main.")).toBeInTheDocument();

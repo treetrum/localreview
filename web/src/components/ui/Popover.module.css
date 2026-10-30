@@ -1,0 +1,25 @@
+/* A non-modal <dialog>: undo the UA styles that centre it, since Floating UI positions it. */
+.popover {
+  z-index: 40;
+  inset: auto;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  max-width: calc(100vw - 1rem);
+  overflow: hidden;
+  border-width: 1px;
+  border-radius: var(--radius);
+  background: var(--card);
+  color: var(--card-foreground);
+  box-shadow:
+    0 4px 6px -1px rgb(0 0 0 / 10%),
+    0 2px 4px -2px rgb(0 0 0 / 10%);
+  animation: fade-in 0.1s ease-out;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}

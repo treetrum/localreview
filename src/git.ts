@@ -1,14 +1,18 @@
 import { stat } from "node:fs/promises";
 import { basename, join } from "node:path";
-import { filePath, type DiffFile, type DiffResponse } from "../shared/types";
+import {
+  filePath,
+  type CommitInfo,
+  type DiffFile,
+  type DiffRequest,
+  type DiffResponse,
+  type DiffTarget,
+} from "../shared/types";
 import { addedFile, parseDiff } from "./parse-diff";
 
-export type DiffTarget =
-  | { kind: "branch"; base?: string }
-  | { kind: "staged" }
-  | { kind: "commit"; sha: string };
-
 export const MAX_CONTENT_BYTES = 512 * 1024;
+export const MAX_BRANCH_COMMITS = 200;
+export const RECENT_COMMITS = 20;
 const BINARY_SNIFF_BYTES = 8 * 1024;
 const CONCURRENCY = 16;
 
@@ -45,7 +49,7 @@ export async function tryGit(cwd: string, args: string[]): Promise<string | null
 type NewSide = { kind: "worktree" } | { kind: "index" } | { kind: "rev"; sha: string };
 
 type Resolved = {
-  baseRef: string;
+  target: DiffTarget;
   baseSha: string;
   label: string;
   diffArgs: string[];
@@ -53,13 +57,35 @@ type Resolved = {
   includeUntracked: boolean;
 };
 
-export async function loadDiff(cwd: string, target: DiffTarget): Promise<DiffResponse> {
-  const repoRoot = (await git(cwd, ["rev-parse", "--show-toplevel"])).trim();
-  const branch =
-    (await tryGit(repoRoot, ["symbolic-ref", "--short", "-q", "HEAD"]))?.trim() || null;
-  const resolved = await resolveTarget(repoRoot, branch, target);
+type Repo = {
+  root: string;
+  branch: string | null;
+  head: string | null;
+  base: string | null;
+  /** null when there's no HEAD or base, or they share no history. */
+  mergeBase: string | null;
+};
 
-  const raw = await git(repoRoot, [
+export async function loadDiff(cwd: string, request: DiffRequest = {}): Promise<DiffResponse> {
+  const root = (await git(cwd, ["rev-parse", "--show-toplevel"])).trim();
+  const [branch, head, base] = await Promise.all([
+    tryGit(root, ["symbolic-ref", "--short", "-q", "HEAD"]).then((out) => out?.trim() || null),
+    tryGit(root, ["rev-parse", "--verify", "-q", "HEAD"]).then((out) => out?.trim() || null),
+    request.base ?? defaultBase(root),
+  ]);
+  const baseSha = base === null ? null : await verifyCommit(root, base);
+  const mergeBase =
+    head && baseSha ? ((await tryGit(root, ["merge-base", baseSha, head]))?.trim() ?? null) : null;
+  const repo: Repo = { root, branch, head, base, mergeBase };
+
+  const target = request.target ?? { kind: base === null ? "uncommitted" : "branch" };
+  const [resolved, branches, commitList] = await Promise.all([
+    resolveTarget(repo, target),
+    listBranches(root),
+    listCommits(repo),
+  ]);
+
+  const raw = await git(root, [
     "-c",
     "core.quotePath=false",
     "diff",
@@ -73,80 +99,153 @@ export async function loadDiff(cwd: string, target: DiffTarget): Promise<DiffRes
     "--",
   ]);
   const files = parseDiff(raw);
-  await mapConcurrent(files, (file) => loadContents(repoRoot, resolved, file));
+  await mapConcurrent(files, (file) => loadContents(root, resolved, file));
 
   if (resolved.includeUntracked) {
-    const untracked = (
-      await git(repoRoot, ["ls-files", "--others", "--exclude-standard", "-z"])
-    ).split("\0");
+    const untracked = (await git(root, ["ls-files", "--others", "--exclude-standard", "-z"])).split(
+      "\0",
+    );
     files.push(
-      ...(await mapConcurrent(untracked.filter(Boolean), (path) => untrackedFile(repoRoot, path))),
+      ...(await mapConcurrent(untracked.filter(Boolean), (path) => untrackedFile(root, path))),
     );
   }
 
   files.sort((a, b) => compareCodeUnits(filePath(a), filePath(b)));
 
   return {
-    repoName: basename(repoRoot),
-    repoRoot,
+    repoName: basename(root),
+    repoRoot: root,
     branch,
     label: resolved.label,
-    baseRef: resolved.baseRef,
+    target: resolved.target,
+    base,
     baseSha: resolved.baseSha,
+    branches,
+    ...commitList,
     files,
   };
 }
 
-async function resolveTarget(
-  repoRoot: string,
-  branch: string | null,
-  target: DiffTarget,
-): Promise<Resolved> {
-  const head = (await tryGit(repoRoot, ["rev-parse", "--verify", "-q", "HEAD"]))?.trim() ?? null;
+async function resolveTarget(repo: Repo, target: DiffTarget): Promise<Resolved> {
+  const { root, branch, head } = repo;
+  const on = branch ?? head?.slice(0, 7) ?? "HEAD";
 
-  if (target.kind === "staged") {
-    const baseSha = head ?? (await emptyTree(repoRoot));
-    return {
-      baseRef: "HEAD",
-      baseSha,
-      label: `Staged changes on ${branch ?? "HEAD"}`,
-      diffArgs: ["--cached", baseSha],
-      newSide: { kind: "index" },
-      includeUntracked: false,
-    };
+  switch (target.kind) {
+    case "uncommitted":
+    case "staged": {
+      const baseSha = head ?? (await emptyTree(root));
+      const staged = target.kind === "staged";
+      return {
+        target,
+        baseSha,
+        label: `${staged ? "Staged" : "Uncommitted"} changes on ${on}`,
+        diffArgs: staged ? ["--cached", baseSha] : [baseSha],
+        newSide: staged ? { kind: "index" } : { kind: "worktree" },
+        includeUntracked: !staged,
+      };
+    }
+
+    case "commits": {
+      const [from, to] = await Promise.all([
+        verifyCommit(root, target.from),
+        verifyCommit(root, target.to),
+      ]);
+      if ((await tryGit(root, ["merge-base", "--is-ancestor", from, to])) === null) {
+        throw new GitError(`${target.from} is not an ancestor of ${target.to}`);
+      }
+      const parent = (await tryGit(root, ["rev-parse", "--verify", "-q", `${from}^`]))?.trim();
+      const baseSha = parent || (await emptyTree(root));
+      return {
+        target: { kind: "commits", from, to },
+        baseSha,
+        label: await commitsLabel(root, from, to, parent),
+        diffArgs: [baseSha, to],
+        newSide: { kind: "rev", sha: to },
+        includeUntracked: false,
+      };
+    }
+
+    case "branch": {
+      if (repo.base === null) {
+        throw new GitError(
+          "Couldn't find a main or master branch. Pick a base branch to compare against.",
+        );
+      }
+      if (head && !repo.mergeBase) {
+        throw new GitError(`${on} and ${repo.base} have no common history`);
+      }
+      const baseSha = repo.mergeBase ?? (await emptyTree(root));
+      return {
+        target,
+        baseSha,
+        label: `${on} vs ${repo.base}`,
+        diffArgs: [baseSha],
+        newSide: { kind: "worktree" },
+        includeUntracked: true,
+      };
+    }
   }
+}
 
-  if (target.kind === "commit") {
-    const sha = await verifyCommit(repoRoot, target.sha);
-    const parent = (await tryGit(repoRoot, ["rev-parse", "--verify", "-q", `${sha}^`]))?.trim();
-    const baseSha = parent || (await emptyTree(repoRoot));
-    const [short = sha, subject = ""] = (
-      await git(repoRoot, ["log", "-1", "--format=%h%x00%s", sha])
-    )
+async function commitsLabel(
+  root: string,
+  from: string,
+  to: string,
+  parent: string | undefined,
+): Promise<string> {
+  if (from === to) {
+    const [short = to, subject = ""] = (await git(root, ["log", "-1", "--format=%h%x00%s", to]))
       .trim()
       .split("\0");
-    return {
-      baseRef: `${short}^`,
-      baseSha,
-      label: `${short} ${subject}`.trim(),
-      diffArgs: [baseSha, sha],
-      newSide: { kind: "rev", sha },
-      includeUntracked: false,
-    };
+    return `${short} ${subject}`.trim();
   }
+  const [count, fromShort, toShort] = await Promise.all([
+    git(root, ["rev-list", "--count", to, ...(parent ? ["--not", parent] : [])]),
+    git(root, ["rev-parse", "--short", from]),
+    git(root, ["rev-parse", "--short", to]),
+  ]);
+  return `${fromShort.trim()}..${toShort.trim()} (${count.trim()} commits)`;
+}
 
-  const baseRef = target.base ?? (await defaultBase(repoRoot));
-  const baseSha = head
-    ? (await git(repoRoot, ["merge-base", await verifyCommit(repoRoot, baseRef), head])).trim()
-    : await emptyTree(repoRoot);
+async function listBranches(root: string): Promise<string[]> {
+  const out = await git(root, [
+    "for-each-ref",
+    "--format=%(refname:short)%00%(symref)",
+    "refs/heads",
+    "refs/remotes",
+  ]);
+  return out
+    .split("\n")
+    .map((line) => line.split("\0"))
+    .filter(([name, symref]) => name && !symref)
+    .map(([name]) => name as string);
+}
+
+async function listCommits(repo: Repo): Promise<Pick<DiffResponse, "commits" | "commitsScope">> {
+  if (!repo.head) return { commits: [], commitsScope: "recent" };
+  if (repo.mergeBase) {
+    const commits = await log(repo.root, [
+      `-${MAX_BRANCH_COMMITS}`,
+      `${repo.mergeBase}..${repo.head}`,
+    ]);
+    if (commits.length > 0) return { commits, commitsScope: "branch" };
+  }
   return {
-    baseRef,
-    baseSha,
-    label: `${branch ?? head?.slice(0, 7) ?? "HEAD"} vs ${baseRef}`,
-    diffArgs: [baseSha],
-    newSide: { kind: "worktree" },
-    includeUntracked: true,
+    commits: await log(repo.root, [`-${RECENT_COMMITS}`, repo.head]),
+    commitsScope: "recent",
   };
+}
+
+async function log(root: string, args: string[]): Promise<CommitInfo[]> {
+  const out = await git(root, ["log", "--format=%H%x00%s%x00%an%x00%aI%x1e", ...args]);
+  return out
+    .split("\x1e")
+    .map((record) => record.trim())
+    .filter(Boolean)
+    .map((record) => {
+      const [sha = "", subject = "", author = "", date = ""] = record.split("\0");
+      return { sha, subject, author, date };
+    });
 }
 
 async function verifyCommit(repoRoot: string, ref: string): Promise<string> {
@@ -155,7 +254,7 @@ async function verifyCommit(repoRoot: string, ref: string): Promise<string> {
   return sha.trim();
 }
 
-async function defaultBase(repoRoot: string): Promise<string> {
+async function defaultBase(repoRoot: string): Promise<string | null> {
   const [main, master, originHead] = await Promise.all([
     tryGit(repoRoot, ["rev-parse", "--verify", "-q", "main^{commit}"]),
     tryGit(repoRoot, ["rev-parse", "--verify", "-q", "master^{commit}"]),
@@ -163,10 +262,7 @@ async function defaultBase(repoRoot: string): Promise<string> {
   ]);
   if (main) return "main";
   if (master) return "master";
-  if (originHead?.trim()) return originHead.trim();
-  throw new GitError(
-    "Couldn't find a main or master branch. Pass a base ref, e.g. `localreview develop`.",
-  );
+  return originHead?.trim() || null;
 }
 
 async function emptyTree(repoRoot: string): Promise<string> {

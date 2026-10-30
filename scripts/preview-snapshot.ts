@@ -195,7 +195,7 @@ try {
   write("README.md", "# Acme Shop\n\nA tiny shopping cart with discount codes.\n");
   write("docs/discounts.md", "# Discounts\n\nPercent or fixed amounts, applied to the subtotal.\n");
 
-  const diff = await loadDiff(root, { kind: "branch", base: "main" });
+  const diff = await loadDiff(root, { base: "main" });
   // Review state is keyed by repoRoot, so a stable value keeps comments across redeploys.
   diff.repoRoot = "/demo/acme-shop";
   await mkdir(join("dist", "api"), { recursive: true });

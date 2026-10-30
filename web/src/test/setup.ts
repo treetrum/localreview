@@ -5,6 +5,7 @@ import { afterEach, vi } from "vitest";
 afterEach(() => {
   cleanup();
   localStorage.clear();
+  window.history.replaceState(null, "", "/");
   // A timed-out fake-timer test must not leak fake timers into later tests.
   vi.useRealTimers();
   vi.unstubAllGlobals();

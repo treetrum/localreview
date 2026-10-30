@@ -53,23 +53,23 @@ diff changed is automatically un-marked as viewed.
 
 ## 2. Features
 
-| Area                          | Behaviour                                                                                                                                                                 |
-| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Diff targets**              | Default: current branch (committed + uncommitted + untracked) vs its merge-base with `main`/`master`. Also: any base ref, `--staged`, `--commit <sha>`.                   |
-| **Diff view**                 | **Unified** or **split** (side by side, like GitHub), toggled in the header and remembered. Hunk headers, line numbers, wrapped lines, sticky headers, highlighting.      |
-| **Expand context**            | Hunk headers carry GitHub-style expand buttons: 20 lines up or down, or all of a gap of 20 or fewer. **Expand all lines** in the file header shows the whole file.        |
-| **Line comments**             | Hover a line and click **+**. Drag across rows, or shift-click a second **+**, for a range. Comments on deleted lines are anchored to the old side.                       |
-| **File and overall comments** | **Comment on file** per file; an **Overall feedback** box for the whole change.                                                                                           |
-| **Editing**                   | Edit and delete comments. ⌘/Ctrl+↵ submits, Esc cancels.                                                                                                                  |
-| **Outdated comments**         | If a commented line disappears after a refresh, the comment moves to the top of the file with an _Outdated_ badge. It's still included when copying.                      |
-| **Copy review**               | Formats all feedback as Markdown (with `diff` snippets) and copies it to the clipboard.                                                                                   |
-| **Copy file path**            | An icon button beside each file's path copies it (the new path for renames) to the clipboard.                                                                             |
-| **Persistence**               | Comments, summary and viewed state are saved in `localStorage` per repo and diff target. **Clear** removes feedback but keeps viewed state.                               |
-| **Viewed tracking**           | A per-file **Viewed** checkbox collapses the file. A progress bar in the header shows _x/y viewed_. Viewed marks reset automatically when a file's diff changes.          |
-| **File navigation**           | Sidebar with **tree** view (collapsible folders, single-child chains compressed like `src/components`) or **list** view (filename + directory). The choice is remembered. |
-| **Filter**                    | Path search (case-insensitive; space-separated terms must all match) that narrows both the sidebar and the diff. Debounced; `/` focuses it, Esc clears it.                |
-| **Hide viewed files**         | A sidebar toggle that hides viewed files from both the sidebar and the diff, so only what's left to review shows. Remembered across reloads.                              |
-| **Refresh**                   | Reloads the diff from git without restarting.                                                                                                                             |
+| Area                          | Behaviour                                                                                                                                                                  |
+| ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Diff picker**               | Click the diff label in the header to switch: branch vs any base branch (default: `main`/`master`), uncommitted, staged, one commit, or a range (shift-click). In the URL. |
+| **Diff view**                 | **Unified** or **split** (side by side, like GitHub), toggled in the header and remembered. Hunk headers, line numbers, wrapped lines, sticky headers, highlighting.       |
+| **Expand context**            | Hunk headers carry GitHub-style expand buttons: 20 lines up or down, or all of a gap of 20 or fewer. **Expand all lines** in the file header shows the whole file.         |
+| **Line comments**             | Hover a line and click **+**. Drag across rows, or shift-click a second **+**, for a range. Comments on deleted lines are anchored to the old side.                        |
+| **File and overall comments** | **Comment on file** per file; an **Overall feedback** box for the whole change.                                                                                            |
+| **Editing**                   | Edit and delete comments. ⌘/Ctrl+↵ submits, Esc cancels.                                                                                                                   |
+| **Outdated comments**         | If a commented line disappears after a refresh, the comment moves to the top of the file with an _Outdated_ badge. It's still included when copying.                       |
+| **Copy review**               | Formats all feedback as Markdown (with `diff` snippets) and copies it to the clipboard.                                                                                    |
+| **Copy file path**            | An icon button beside each file's path copies it (the new path for renames) to the clipboard.                                                                              |
+| **Persistence**               | Comments, summary and viewed state are saved in `localStorage` per repo and diff target. **Clear** removes feedback but keeps viewed state.                                |
+| **Viewed tracking**           | A per-file **Viewed** checkbox collapses the file. A progress bar in the header shows _x/y viewed_. Viewed marks reset automatically when a file's diff changes.           |
+| **File navigation**           | Sidebar with **tree** view (collapsible folders, single-child chains compressed like `src/components`) or **list** view (filename + directory). The choice is remembered.  |
+| **Filter**                    | Path search (case-insensitive; space-separated terms must all match) that narrows both the sidebar and the diff. Debounced; `/` focuses it, Esc clears it.                 |
+| **Hide viewed files**         | A sidebar toggle that hides viewed files from both the sidebar and the diff, so only what's left to review shows. Remembered across reloads.                               |
+| **Refresh**                   | Reloads the diff from git without restarting.                                                                                                                              |
 
 ---
 
@@ -113,14 +113,14 @@ Key properties:
 ```
 localreview/
 ├── src/                      # Bun: CLI + API server (Bun-only APIs; tested with bun test)
-│   ├── cli.ts                # entry point / bin; arg parsing, start server, open browser
+│   ├── cli.ts                # entry point / bin; options, start server, open browser
 │   ├── server.ts             # Bun.serve: /api/diff + static dist/ with SPA fallback
 │   ├── git.ts                # diff targets, git invocations, file contents, untracked files
 │   ├── parse-diff.ts         # unified diff parser (pure; also used by UI test fixtures)
 │   ├── test-repo.ts          # throwaway git repos for the server tests
 │   └── *.test.ts
 ├── shared/
-│   └── types.ts              # DiffResponse / DiffFile / DiffHunk / DiffLine, filePath()
+│   └── types.ts              # DiffRequest / DiffResponse / DiffFile / …, filePath(), query helpers
 ├── web/                      # Vite root
 │   ├── index.html
 │   └── src/
@@ -130,11 +130,12 @@ localreview/
 │       ├── components/
 │       │   ├── FileDiff.tsx  # one file: header, comments, diff table, selection, viewed
 │       │   ├── FileNav.tsx   # sidebar: filter input, tree/list views
+│       │   ├── DiffPicker.tsx # header popover: base branch, target, commits
 │       │   ├── Comment.tsx   # CommentForm + CommentCard
 │       │   ├── FileStatusBadge.tsx
 │       │   ├── icons.tsx     # inlined Lucide icons
 │       │   ├── ui/           # shadcn-style primitives: Button, Badge, Checkbox, Input,
-│       │   │                 #   Progress, Textarea, ToggleGroup, useTooltip
+│       │   │                 #   Progress, Textarea, ToggleGroup, useTooltip, usePopover
 │       │   └── *.test.tsx    # component tests, next to each component
 │       ├── lib/
 │       │   ├── review.ts     # review types, line positions, fingerprints, range labels
@@ -144,7 +145,9 @@ localreview/
 │       │   ├── rows.ts       # split view: pairs old/new rows from buildRows
 │       │   ├── filter.ts     # path matching
 │       │   ├── highlight.ts  # Shiki setup, language detection, serial queue
-│       │   ├── useDiff.ts, useReview.ts, useHighlightedFile.ts, useLocalStorage.ts
+│       │   ├── commits.ts    # commit-range selection (click / shift-click)
+│       │   ├── useDiff.ts, useDiffRequest.ts, useReview.ts, useHighlightedFile.ts,
+│       │   │   useLocalStorage.ts
 │       │   └── *.test.ts
 │       ├── styles/global.css # design tokens, reset, Shiki token colours
 │       └── test/             # Vitest setup, fixtures, renderApp()
@@ -171,21 +174,19 @@ APIs.
 ### 5.1 CLI (`src/cli.ts`)
 
 ```
-localreview [base-ref] [options]
+localreview [options]
 
-  base-ref              Compare against this ref instead of main/master
-  --staged              Review staged changes only
-  --commit <sha>        Review a single commit
   -C, --cwd <dir>       Run as if started in <dir>
   -p, --port <port>     Port to listen on (default: 4180)
   --no-open             Don't open the browser
   -h, --help
 ```
 
+- There are no target arguments: what to diff is picked in the browser (see 7.9) and carried in
+  the `/api/diff` query string, so one server can show any target.
 - Argument parsing uses `node:util` `parseArgs`. There's no CLI framework dependency.
-- `base-ref`, `--staged` and `--commit` are mutually exclusive.
-- It verifies the directory is a git repo before starting, then loads the diff once so a bad ref
-  fails in the terminal rather than in the browser.
+- It verifies the directory is a git repo before starting, then loads the default diff once so
+  git problems show up in the terminal rather than only in the browser.
 - It warns if `dist/` hasn't been built.
 - It opens the browser with `open` / `xdg-open` / `start` depending on platform.
 - `package.json#bin` points straight at `src/cli.ts` (with a `#!/usr/bin/env bun` shebang), so
@@ -193,19 +194,33 @@ localreview [base-ref] [options]
 
 ### 5.2 Diff targets (`src/git.ts`)
 
-| Target            | Base                                                                                    | Compared against   | Untracked included | Label                       |
-| ----------------- | --------------------------------------------------------------------------------------- | ------------------ | ------------------ | --------------------------- |
-| default / `<ref>` | `git merge-base <ref> HEAD` (ref defaults to `main`, then `master`, then `origin/HEAD`) | **working tree**   | yes                | `feature vs main`           |
-| `--staged`        | `HEAD` (empty tree if no commits)                                                       | index (`--cached`) | no                 | `Staged changes on feature` |
-| `--commit <sha>`  | `<sha>^` (empty tree for root commits)                                                  | `<sha>`            | no                 | `abc1234 <subject>`         |
+`loadDiff(cwd, { target?, base? })`. `base` is the branch to compare against; it defaults to
+`main`, then `master`, then `origin/HEAD`, and is `null` if none exist.
 
-The default diffs the merge-base against the working tree rather than `HEAD`, so uncommitted
-work-in-progress is part of the review. That matches the workflow of reviewing what an agent has
-just done.
+| Target              | Old side                                 | New side           | Untracked | Label                                                |
+| ------------------- | ---------------------------------------- | ------------------ | --------- | ---------------------------------------------------- |
+| `branch` (default)  | `git merge-base <base> HEAD`             | **working tree**   | yes       | `feature vs main`                                    |
+| `uncommitted`       | `HEAD` (empty tree if no commits)        | working tree       | yes       | `Uncommitted changes on feature`                     |
+| `staged`            | `HEAD` (empty tree if no commits)        | index (`--cached`) | no        | `Staged changes on feature`                          |
+| `commits` from → to | `<from>^` (empty tree for a root commit) | `<to>`             | no        | `abc1234 <subject>` / `abc1234..def5678 (3 commits)` |
+
+- The default diffs the merge-base against the working tree rather than `HEAD`, so uncommitted
+  work-in-progress is part of the review. That matches the workflow of reviewing what an agent has
+  just done.
+- With no target, it's `branch` if there's a base, otherwise `uncommitted`, so a repo without
+  `main`/`master` still opens and you pick a base in the UI. An explicit `branch` without a base
+  is an error, as is a base with no history in common with `HEAD`.
+- `commits` refs can be anything `rev-parse` accepts; the response echoes them as full SHAs.
+  `from` must be an ancestor of `to` (`merge-base --is-ancestor`).
+- Every response also lists, for the picker, the **branches** (`for-each-ref refs/heads
+  refs/remotes`, skipping symbolic refs like `origin/HEAD`) and the **commits**: those in
+  `<merge-base>..HEAD` (up to 200, `commitsScope: "branch"`), or the last 20 on `HEAD` when that's
+  empty, e.g. on `main` itself (`commitsScope: "recent"`).
 
 ### 5.3 Pipeline
 
-1. **Resolve** the repo root (`rev-parse --show-toplevel`), current branch, base SHA and label.
+1. **Resolve** the repo root (`rev-parse --show-toplevel`), current branch, `HEAD`, base and
+   merge-base, then the target's old-side SHA and label, the branch list and the commit list.
 2. **Diff:** `git -c core.quotePath=false diff --no-color --no-ext-diff --no-relative
    --src-prefix=a/ --dst-prefix=b/ -M <args>`.
    - `core.quotePath=false` keeps non-ASCII paths readable.
@@ -219,7 +234,7 @@ just done.
    - New side: depends on the target (working-tree file / `:path` from the index / `<sha>:path`).
    - Files over **512 KB** are skipped (no highlighting), checked with `cat-file -s` or the file's
      size.
-5. **Untracked files** (branch target only): `git ls-files --others --exclude-standard -z`. Each
+5. **Untracked files** (`branch` and `uncommitted` only): `git ls-files --others --exclude-standard -z`. Each
    one becomes an all-additions file via `addedFile()`. Binary (NUL byte in the first 8 KB) or
    oversized files are shown as "binary or very large".
 6. **Sort** by path in plain code-unit order. The UI re-orders by tree (see 7.3); this just makes
@@ -251,7 +266,9 @@ newline (no phantom final line) and empty files (no hunks).
 - `Bun.serve` on **127.0.0.1** only. It's a local tool, so it shouldn't be reachable from the
   network.
 - `GET /api/diff` returns a `DiffResponse` as JSON, or `{ error }` with status 500 (the `GitError`
-  message is shown to the user). Other `/api/*` paths are 404.
+  message is shown to the user). The query string is a `DiffRequest` (`?target=commits&from=…&to=…`,
+  `?target=staged&base=develop`, …), parsed by `fromSearchParams`; a malformed one is a 400.
+  Other `/api/*` paths are 404.
 - Every other path serves files from `dist/`, falling back to `index.html`. Paths are normalised
   as absolute paths, which collapses `..` segments and keeps lookups inside `dist/`. If `dist/`
   hasn't been built, it answers 503 with instructions.
@@ -284,16 +301,30 @@ type DiffFile = {
   oldContent?: string;
   newContent?: string; // full contents for highlighting; omitted if binary/huge
 };
+type DiffTarget =
+  | { kind: "branch" }
+  | { kind: "uncommitted" }
+  | { kind: "staged" }
+  | { kind: "commits"; from: string; to: string }; // oldest, newest; inclusive
+type DiffRequest = { target?: DiffTarget; base?: string };
+type CommitInfo = { sha: string; subject: string; author: string; date: string };
 type DiffResponse = {
   repoName: string;
   repoRoot: string;
   branch: string | null;
   label: string; // e.g. "feature vs main"
-  baseRef: string;
-  baseSha: string;
+  target: DiffTarget; // resolved: commit refs as full SHAs
+  base: string | null;
+  baseSha: string; // old side of the diff
+  branches: string[];
+  commits: CommitInfo[]; // newest first
+  commitsScope: "branch" | "recent";
   files: DiffFile[];
 };
 ```
+
+`toSearchParams` / `fromSearchParams` convert a `DiffRequest` to and from the query string. The
+UI uses the same encoding for its own URL and for `/api/diff`.
 
 A file's identity in the UI is `filePath(file)`, which is `oldPath` for deleted files and
 `newPath` otherwise.
@@ -305,10 +336,11 @@ A file's identity in the UI is `filePath(file)`, which is `oldPath` for deleted 
 ### 7.1 Component structure
 
 ```
-App                              load states (loading / error + Try again / ready)
+App                              diff request (URL), load states (loading / error + Try again /
+│                                Show the default diff / ready)
 └── Review  key=storageKey       owns review state, filter query, derived data
-    ├── header                   repo / label / base SHA, progress, unified ⇄ split, refresh,
-    │                            Clear, Copy review
+    ├── header                   repo, DiffPicker (label ▾), base SHA, progress, unified ⇄ split,
+    │                            refresh, Clear, Copy review
     ├── FileNav                  sidebar
     │   ├── FileSearch           owns raw input text + debounce timer
     │   ├── Hide viewed files    toggle (state owned by Review)
@@ -324,13 +356,16 @@ App                              load states (loading / error + Try again / read
 `Review` is keyed by its storage key, so switching to a different repo or target remounts it with
 fresh state. That avoids writing one review's state under another's key.
 
-If a refresh fails while a diff is already loaded, the review stays on screen with an error banner
-rather than being replaced by the error page, so unsaved drafts survive.
+If a refresh or a newly picked diff fails while a diff is already loaded, the review stays on
+screen with an error banner rather than being replaced by the error page, so unsaved drafts
+survive. The error page offers **Show the default diff** when the URL asks for something else, so
+a stale link (e.g. a commit that's been rebased away) isn't a dead end.
 
 ### 7.2 State ownership
 
 | State                                            | Owner                           | Persisted                                        |
 | ------------------------------------------------ | ------------------------------- | ------------------------------------------------ |
+| Diff request (target, base)                      | `useDiffRequest` (in `App`)     | URL query string (history entries)               |
 | Diff data, loading/error/refreshing              | `useDiff` (in `App`)            | no (refetched)                                   |
 | Comments, summary, viewed marks                  | `useReview` (in `Review`)       | `localStorage["localreview:<repoRoot>:<label>"]` |
 | Applied filter query                             | `Review`                        | no                                               |
@@ -348,8 +383,10 @@ filter, `fileId` (path → `file-<index>`), fingerprints, comments grouped by pa
 and the viewed paths. Comment groups reuse the previous array for paths whose comments didn't
 change, so a new comment only re-renders the file it belongs to.
 
-`useDiff` keeps the in-flight request promise in state; `refresh()` replaces it and an effect
-subscribes to the current one, ignoring responses from superseded requests.
+`useDiff(request)` keeps the in-flight request promise in state; a new request (compared by its
+query string, during render) or `refresh()` replaces it, and an effect subscribes to the current
+one, ignoring responses from superseded requests. The previous diff stays on screen until the new
+one arrives.
 
 ### 7.3 File ordering and tree
 
@@ -451,6 +488,32 @@ passed to every `FileDiff` as a prop.
 - The progress bar is a native `<progress>`. The view toggle is a `<fieldset>` of `aria-pressed`
   buttons. Folders use `aria-expanded`.
 - The tests query by role and label, which keeps these names honest.
+- The diff picker's trigger is named by the current label and has `aria-haspopup="dialog"` /
+  `aria-expanded`; its options are `aria-pressed` buttons named by their title and described by
+  their detail line.
+
+### 7.9 Diff picker (`DiffPicker`, `lib/commits.ts`, `useDiffRequest`)
+
+The header label is a button that opens a popover (`usePopover`: a non-modal `<dialog>`
+positioned by Floating UI, closed by Escape or an outside press, focusing the selected option on
+open):
+
+- **Compare against**: a `<select>` of the response's `branches`. Picking one switches to the
+  `branch` target with that base.
+- **`<branch> vs <base>`**, **Uncommitted changes**, **Staged changes**. The branch option is
+  disabled when there's no base.
+- **Commits on `<branch>`** (or **Recent commits**): a click picks that commit; a shift-click
+  extends the current commit selection to the clicked one (`clickCommit`), keeping the oldest end
+  unless the click is older still, and shrinking the range when the click falls inside it. Every
+  commit in the selected range is marked pressed.
+
+Every pick closes the popover. `App` turns a pick into a `DiffRequest` (keeping the current `base`
+for target changes) and `useDiffRequest` pushes it onto the URL with `history.pushState`, so a
+reload shows the same diff and back/forward step through picks (it listens for `popstate`). A
+malformed query in the URL is dropped with `replaceState` and the default diff is shown.
+
+Each target has its own label and so its own storage key: switching remounts `Review` with that
+diff's comments and viewed marks, and switching back restores them.
 
 ---
 
@@ -611,11 +674,11 @@ sidebar land correctly with `content-visibility` (covered by an E2E test).
 
 Three layers. Pick the cheapest layer that can catch the bug.
 
-| Layer               | Location              | Runner                                            | Scope                                                                                                                 | In pre-commit           |
-| ------------------- | --------------------- | ------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- | ----------------------- |
-| Server              | `src/**/*.test.ts`    | `bun test ./src`                                  | parser; `loadDiff` against **real temp git repos** (branch, staged, commit, root commit, renames, deletes, untracked) | ✅                      |
-| UI unit + component | `web/**/*.test.ts(x)` | Vitest + happy-dom + Testing Library + user-event | pure logic; each component in isolation; `useReview` via `renderHook`; cross-component flows in `App.test.tsx`        | ✅                      |
-| End-to-end          | `e2e/*.e2e.ts`        | Playwright (Chromium)                             | only what needs a real browser + server                                                                               | ❌ (`bun run test:e2e`) |
+| Layer               | Location              | Runner                                            | Scope                                                                                                                                                  | In pre-commit           |
+| ------------------- | --------------------- | ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------- |
+| Server              | `src/**/*.test.ts`    | `bun test ./src`                                  | parser; `loadDiff` against **real temp git repos** (all targets, ranges, root commit, renames, deletes, untracked, branch/commit lists); query parsing | ✅                      |
+| UI unit + component | `web/**/*.test.ts(x)` | Vitest + happy-dom + Testing Library + user-event | pure logic; each component in isolation; `useReview` via `renderHook`; cross-component flows in `App.test.tsx`                                         | ✅                      |
+| End-to-end          | `e2e/*.e2e.ts`        | Playwright (Chromium)                             | only what needs a real browser + server                                                                                                                | ❌ (`bun run test:e2e`) |
 
 All three layers run in CI on every pull request.
 
@@ -670,6 +733,8 @@ runtime is cleaner than forcing either one onto the other.
 5. Editing a file on disk, then refreshing, un-marks it as viewed.
 6. Expanding a gap from real file contents, commenting on a revealed line, and that comment
    surviving a reload and copying without an _Outdated_ label.
+7. Switching to uncommitted changes and then a single commit with the picker, the pick surviving
+   a reload, and back returning to the previous pick.
 
 Fixtures (`e2e/fixtures.ts`):
 
@@ -739,7 +804,8 @@ bun run format     # oxfmt (write)
   closes, a `cleanup` job deletes that PR's deployments through the Cloudflare API. The UI only
   talks to the server through `GET /api/diff`, so `scripts/preview-snapshot.ts` builds a fixed demo
   repo and writes its diff to `dist/api/diff` after the build, and the static site works without
-  the server. Refresh just re-reads the snapshot. Needs the `CLOUDFLARE_API_TOKEN` (Pages: Edit)
+  the server. Refresh just re-reads the snapshot, and so does picking another diff: static hosting
+  ignores the query string, so the preview always shows the snapshot's branch diff. Needs the `CLOUDFLARE_API_TOKEN` (Pages: Edit)
   and `CLOUDFLARE_ACCOUNT_ID` repo secrets and creates the `localreview` Pages project on first
   run; fork PRs are skipped because they don't get secrets.
 - **`pr-title.yml`** checks the PR title against the same Conventional Commits pattern as the
@@ -756,31 +822,33 @@ bun run format     # oxfmt (write)
 
 ## 15. Decision log
 
-| #   | Decision                                                                                                 | Alternatives considered                                      | Rationale                                                                                                                                                                     |
-| --- | -------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | **Bun** for CLI/server, **Vite** for the UI                                                              | Bun's built-in HTML bundler (`Bun.serve` routes)             | Vite was preferred for the frontend: mature HMR, plugin ecosystem, Vitest integration. Bun stays the runtime for fast startup and simple process/file APIs.                   |
-| 2   | **Own diff renderer**                                                                                    | `react-diff-view`, `@git-diff-view/react`                    | Full control over markup, styling and interaction is the reason the project exists. A unified diff is a simple table.                                                         |
-| 3   | **Own unified-diff parser**                                                                              | `parse-diff`, `gitdiff-parser`                               | About 100 lines, no dependency, handles spaces in paths and header-like content inside hunks, and reused by the UI test fixtures.                                             |
-| 4   | **Stateless server; review state in `localStorage`**                                                     | Server-side JSON file, a file in `.git/`                     | Simplest model. Survives refresh and restart, needs no cleanup, and keeps the server a pure git → JSON adapter.                                                               |
-| 5   | **Default target = merge-base with main vs working tree, plus untracked**                                | `HEAD` vs working tree; `main...HEAD` (commits only)         | Reviews everything on the branch, including in-progress agent changes, in one view.                                                                                           |
-| 6   | **Highlight whole files, map tokens by line number**                                                     | Highlight hunk lines only                                    | Multi-line constructs (strings, comments, template literals) need full context to tokenise correctly.                                                                         |
-| 7   | **Shiki core + JS regex engine, lazy grammars**                                                          | Full Shiki bundle; Oniguruma WASM; Prism/highlight.js        | GitHub-quality highlighting, dual themes via CSS variables, no WASM, and only the languages in the diff are downloaded.                                                       |
-| 8   | **CSS Modules + hand-built shadcn look**                                                                 | Tailwind; shadcn/ui; Radix                                   | A shadcn-like appearance without the dependency; full control; scoped styles.                                                                                                 |
-| 9   | **Comments anchored to new-side line numbers, old side for deletions; snippet captured at comment time** | Anchor by hunk/line index; store only line numbers           | New-side numbers are what an agent sees in the current file. Snippets keep the copied review meaningful even if the file changes later.                                       |
-| 10  | **Outdated comments are kept and surfaced**                                                              | Drop comments whose line vanished                            | Feedback is never silently lost.                                                                                                                                              |
-| 11  | **Viewed = stored fingerprint must match the current diff**                                              | Plain boolean                                                | Automatically re-flags files the agent changed after you reviewed them.                                                                                                       |
-| 12  | **Clear keeps viewed state**                                                                             | Clear everything                                             | Clearing usually happens after pasting feedback to an agent; review progress is still useful.                                                                                 |
-| 13  | **Diff order = tree order**                                                                              | Git's path order                                             | The main view, sidebar and copied Markdown all agree.                                                                                                                         |
-| 14  | **Filter hides rather than unmounts diffs**                                                              | Conditional rendering                                        | Unsaved drafts and collapse state survive filtering.                                                                                                                          |
-| 15  | **Debounce in the input's change handler, inside `FileSearch`**                                          | `useDeferredValue`; a debounced-value hook in `App`          | Debouncing in `App` still re-renders the whole tree on each keystroke. Owning the text locally keeps typing cheap, and clearing stays instant.                                |
-| 16  | **`content-visibility: auto` + memoised `FileDiff`**                                                     | Virtualised list                                             | Virtualisation complicates sticky headers, anchors, find-in-page and variable-height comment rows. `content-visibility` gets equivalent responsiveness with one CSS property. |
-| 17  | **Drag ends via a one-off `window` `mouseup` listener added on mousedown**                               | An effect that subscribes while dragging                     | No window between mousedown and the effect subscribing; simpler.                                                                                                              |
-| 18  | **Three test layers; component tests render single components**                                          | Everything through `<App />`; everything in Playwright       | Fast, precise failures at the owning component; `App` tests only for real cross-component wiring; Playwright reserved for browser-only concerns.                              |
-| 19  | **Vitest (happy-dom) for `web/`, `bun test` for `src/`**                                                 | One runner for both                                          | `src/` needs Bun APIs; `web/` benefits from the shared Vite pipeline. happy-dom is faster than jsdom and sufficient here.                                                     |
-| 20  | **Playwright: per-worker server, per-test repo reset**                                                   | A server and repo per test                                   | Much faster E2E runs while keeping isolation.                                                                                                                                 |
-| 21  | **oxlint + oxfmt, warnings as errors, enforced by hooks and CI; Conventional Commits**                   | ESLint + Prettier; CI-only enforcement                       | Very fast, low config; enforced locally before anything is committed, and again in CI for anything that skipped the hooks.                                                    |
-| 22  | **Bind to 127.0.0.1; `bin` runs TypeScript source via Bun**                                              | 0.0.0.0; a compiled binary                                   | Local-only tool; no build step needed for the CLI itself.                                                                                                                     |
-| 23  | **Floating UI (`@floating-ui/react-dom`) for tooltips**                                                  | Native `title`; CSS anchor positioning; `@floating-ui/react` | Native tooltips are slow and unstyled. Only the positioning core is needed (small, handles flip/shift and scrolling); hover/focus logic is a few lines in `useTooltip`.       |
+| #   | Decision                                                                                                 | Alternatives considered                                                   | Rationale                                                                                                                                                                     |
+| --- | -------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | **Bun** for CLI/server, **Vite** for the UI                                                              | Bun's built-in HTML bundler (`Bun.serve` routes)                          | Vite was preferred for the frontend: mature HMR, plugin ecosystem, Vitest integration. Bun stays the runtime for fast startup and simple process/file APIs.                   |
+| 2   | **Own diff renderer**                                                                                    | `react-diff-view`, `@git-diff-view/react`                                 | Full control over markup, styling and interaction is the reason the project exists. A unified diff is a simple table.                                                         |
+| 3   | **Own unified-diff parser**                                                                              | `parse-diff`, `gitdiff-parser`                                            | About 100 lines, no dependency, handles spaces in paths and header-like content inside hunks, and reused by the UI test fixtures.                                             |
+| 4   | **Stateless server; review state in `localStorage`**                                                     | Server-side JSON file, a file in `.git/`                                  | Simplest model. Survives refresh and restart, needs no cleanup, and keeps the server a pure git → JSON adapter.                                                               |
+| 5   | **Default target = merge-base with main vs working tree, plus untracked**                                | `HEAD` vs working tree; `main...HEAD` (commits only)                      | Reviews everything on the branch, including in-progress agent changes, in one view.                                                                                           |
+| 6   | **Highlight whole files, map tokens by line number**                                                     | Highlight hunk lines only                                                 | Multi-line constructs (strings, comments, template literals) need full context to tokenise correctly.                                                                         |
+| 7   | **Shiki core + JS regex engine, lazy grammars**                                                          | Full Shiki bundle; Oniguruma WASM; Prism/highlight.js                     | GitHub-quality highlighting, dual themes via CSS variables, no WASM, and only the languages in the diff are downloaded.                                                       |
+| 8   | **CSS Modules + hand-built shadcn look**                                                                 | Tailwind; shadcn/ui; Radix                                                | A shadcn-like appearance without the dependency; full control; scoped styles.                                                                                                 |
+| 9   | **Comments anchored to new-side line numbers, old side for deletions; snippet captured at comment time** | Anchor by hunk/line index; store only line numbers                        | New-side numbers are what an agent sees in the current file. Snippets keep the copied review meaningful even if the file changes later.                                       |
+| 10  | **Outdated comments are kept and surfaced**                                                              | Drop comments whose line vanished                                         | Feedback is never silently lost.                                                                                                                                              |
+| 11  | **Viewed = stored fingerprint must match the current diff**                                              | Plain boolean                                                             | Automatically re-flags files the agent changed after you reviewed them.                                                                                                       |
+| 12  | **Clear keeps viewed state**                                                                             | Clear everything                                                          | Clearing usually happens after pasting feedback to an agent; review progress is still useful.                                                                                 |
+| 13  | **Diff order = tree order**                                                                              | Git's path order                                                          | The main view, sidebar and copied Markdown all agree.                                                                                                                         |
+| 14  | **Filter hides rather than unmounts diffs**                                                              | Conditional rendering                                                     | Unsaved drafts and collapse state survive filtering.                                                                                                                          |
+| 15  | **Debounce in the input's change handler, inside `FileSearch`**                                          | `useDeferredValue`; a debounced-value hook in `App`                       | Debouncing in `App` still re-renders the whole tree on each keystroke. Owning the text locally keeps typing cheap, and clearing stays instant.                                |
+| 16  | **`content-visibility: auto` + memoised `FileDiff`**                                                     | Virtualised list                                                          | Virtualisation complicates sticky headers, anchors, find-in-page and variable-height comment rows. `content-visibility` gets equivalent responsiveness with one CSS property. |
+| 17  | **Drag ends via a one-off `window` `mouseup` listener added on mousedown**                               | An effect that subscribes while dragging                                  | No window between mousedown and the effect subscribing; simpler.                                                                                                              |
+| 18  | **Three test layers; component tests render single components**                                          | Everything through `<App />`; everything in Playwright                    | Fast, precise failures at the owning component; `App` tests only for real cross-component wiring; Playwright reserved for browser-only concerns.                              |
+| 19  | **Vitest (happy-dom) for `web/`, `bun test` for `src/`**                                                 | One runner for both                                                       | `src/` needs Bun APIs; `web/` benefits from the shared Vite pipeline. happy-dom is faster than jsdom and sufficient here.                                                     |
+| 20  | **Playwright: per-worker server, per-test repo reset**                                                   | A server and repo per test                                                | Much faster E2E runs while keeping isolation.                                                                                                                                 |
+| 21  | **oxlint + oxfmt, warnings as errors, enforced by hooks and CI; Conventional Commits**                   | ESLint + Prettier; CI-only enforcement                                    | Very fast, low config; enforced locally before anything is committed, and again in CI for anything that skipped the hooks.                                                    |
+| 22  | **Bind to 127.0.0.1; `bin` runs TypeScript source via Bun**                                              | 0.0.0.0; a compiled binary                                                | Local-only tool; no build step needed for the CLI itself.                                                                                                                     |
+| 23  | **Floating UI (`@floating-ui/react-dom`) for tooltips**                                                  | Native `title`; CSS anchor positioning; `@floating-ui/react`              | Native tooltips are slow and unstyled. Only the positioning core is needed (small, handles flip/shift and scrolling); hover/focus logic is a few lines in `useTooltip`.       |
+| 24  | **Diff target picked in the UI and kept in the URL; no CLI target arguments**                            | CLI subcommands/flags (`--staged`, `--commit`); a fixed target per server | Switching between branch, uncommitted, staged and commits doesn't need a restart, the commit list is browsable, and the URL makes any view reloadable and linkable.           |
+| 25  | **Commit ranges by shift-click in a list of the branch's commits**                                       | Free-text from/to refs                                                    | Matches GitHub's PR commit picker; no typing or copying SHAs. The API takes any refs, so free-text could be added later.                                                      |
 
 ---
 
@@ -796,8 +864,9 @@ bun run format     # oxfmt (write)
   still cause a short pause (a Web Worker would fix this).
 - **Large files and binaries.** Files over 512 KB aren't highlighted. Untracked files over that
   size are shown as "binary or very large" with no content.
-- **Storage keys use the target label.** For `--commit`, the label includes the commit subject,
-  so rewording a commit starts a fresh review. Two tabs on the same review overwrite each other
+- **Storage keys use the target label.** For a single commit, the label includes the commit
+  subject, so rewording a commit starts a fresh review; a commit range's label uses short SHAs, so
+  rebasing starts a fresh one too. Two tabs on the same review overwrite each other
   (last write wins).
 - **The linked CLI serves `dist/`**, so after UI changes you need `bun run build` (or use
   `bun run dev`).
@@ -821,9 +890,10 @@ bun run format     # oxfmt (write)
 
 See `git log`. Notable commits:
 
-| Summary                                                                        |
-| ------------------------------------------------------------------------------ |
-| feat: CLI, diff API and git targets                                            |
-| feat: review UI (diff view, comments, viewed tracking, file nav, filter, copy) |
-| test: component, cross-component and end-to-end test suites                    |
-| ci: validate pull requests with checks, E2E and Conventional Commit titles     |
+| Summary                                                                         |
+| ------------------------------------------------------------------------------- |
+| feat: CLI, diff API and git targets                                             |
+| feat: pick the diff in the UI (base branch, uncommitted, staged, commit ranges) |
+| feat: review UI (diff view, comments, viewed tracking, file nav, filter, copy)  |
+| test: component, cross-component and end-to-end test suites                     |
+| ci: validate pull requests with checks, E2E and Conventional Commit titles      |
