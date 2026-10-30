@@ -10,13 +10,12 @@
   "scripts": {
     "dev": "bun scripts/dev.ts",
     "build": "vite build",
-    "check": "bun run format:check && bun run lint && bun run typecheck && bun run test:server && bun run test:web",
+    "check": "bun run format:check && bun run lint && bun run typecheck && bun run test",
     "format": "oxfmt",
     "format:check": "oxfmt --check",
     "lint": "oxlint --deny-warnings",
     "typecheck": "tsc --noEmit",
-    "test:server": "bun test ./src",
-    "test:web": "vitest run",
+    "test": "bun --bun vitest run",
     "test:e2e": "vite build && playwright test",
     "prepare": "git config core.hooksPath .githooks || true"
   },

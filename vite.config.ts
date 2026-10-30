@@ -18,9 +18,26 @@ export default defineConfig({
     proxy: { "/api": "http://127.0.0.1:4173" },
   },
   test: {
-    environment: "happy-dom",
-    include: ["src/**/*.test.{ts,tsx}"],
-    setupFiles: [fromRoot("./web/src/test/setup.ts")],
-    clearMocks: true,
+    projects: [
+      {
+        extends: true,
+        test: {
+          name: "web",
+          environment: "happy-dom",
+          include: ["src/**/*.test.{ts,tsx}"],
+          setupFiles: [fromRoot("./web/src/test/setup.ts")],
+          clearMocks: true,
+        },
+      },
+      {
+        // Runs under Bun (`bun --bun vitest`) because src/ uses Bun APIs.
+        root: fromRoot("."),
+        test: {
+          name: "server",
+          environment: "node",
+          include: ["src/**/*.test.ts"],
+        },
+      },
+    ],
   },
 });
