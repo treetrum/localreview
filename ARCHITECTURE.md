@@ -153,6 +153,8 @@ localreview/
 │       └── test/             # Vitest setup, fixtures, renderApp()
 ├── e2e/                      # Playwright: fixtures.ts + review.e2e.ts
 ├── scripts/dev.ts            # runs the API (watch mode) and Vite together
+├── scripts/preview-*.ts      # PR preview: demo repo snapshots + their query → file mapping
+├── functions/api/diff.ts     # Cloudflare Pages Function serving those snapshots
 ├── .githooks/                # pre-commit (bun run check), commit-msg (Conventional Commits)
 ├── .github/workflows/        # ci.yml (checks + E2E), pr-title.yml (Conventional Commit titles)
 ├── vite.config.ts            # Vite + Vitest config (web + server projects)
@@ -810,11 +812,15 @@ bun run format     # oxfmt (write)
   deploy to the production URL, `localreview.pages.dev`, so it always shows `main`. When a PR
   closes, a `cleanup` job deletes that PR's deployments through the Cloudflare API. The UI only
   talks to the server through `GET /api/diff`, so `scripts/preview-snapshot.ts` builds a fixed demo
-  repo and writes its diff to `dist/api/diff` after the build, and the static site works without
-  the server. Refresh just re-reads the snapshot, and so does picking another diff: static hosting
-  ignores the query string, so the preview always shows the snapshot's branch diff. Needs the `CLOUDFLARE_API_TOKEN` (Pages: Edit)
-  and `CLOUDFLARE_ACCOUNT_ID` repo secrets and creates the `localreview` Pages project on first
-  run; fork PRs are skipped because they don't get secrets.
+  repo (`acme-shop`: a `feature/discounts` branch with four commits, `main` and `release/1.0` to
+  compare against, and staged, unstaged and untracked changes) and, after the build, writes a
+  snapshot to `dist/snapshots/` of every diff the picker can ask for: each base (or none) with
+  each target and every commit range. Static hosting ignores query strings, so a Pages Function,
+  `functions/api/diff.ts` (deployed from the repo root by `wrangler pages deploy`), maps the
+  `/api/diff` query to its snapshot with the same `snapshotPath()` (`scripts/preview-key.ts`) and
+  answers 404 with an error for anything else. Refresh re-reads the same snapshot. Needs the
+  `CLOUDFLARE_API_TOKEN` (Pages: Edit) and `CLOUDFLARE_ACCOUNT_ID` repo secrets and creates the
+  `localreview` Pages project on first run; fork PRs are skipped because they don't get secrets.
 - **`pr-title.yml`** checks the PR title against the same Conventional Commits pattern as the
   `commit-msg` hook, re-running when the title is edited.
 
