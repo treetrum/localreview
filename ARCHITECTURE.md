@@ -112,7 +112,7 @@ Key properties:
 
 ```
 localreview/
-├── src/                      # Bun: CLI + API server (Bun-only APIs; tested with bun test)
+├── src/                      # Bun: CLI + API server (Bun-only APIs; tested with Vitest under Bun)
 │   ├── cli.ts                # entry point / bin; arg parsing, start server, open browser
 │   ├── server.ts             # Bun.serve: /api/diff + static dist/ with SPA fallback
 │   ├── git.ts                # diff targets, git invocations, file contents, untracked files
@@ -152,7 +152,7 @@ localreview/
 ├── scripts/dev.ts            # runs the API (watch mode) and Vite together
 ├── .githooks/                # pre-commit (bun run check), commit-msg (Conventional Commits)
 ├── .github/workflows/        # ci.yml (checks + E2E), pr-title.yml (Conventional Commit titles)
-├── vite.config.ts            # Vite + Vitest config
+├── vite.config.ts            # Vite + Vitest config (web + server projects)
 ├── playwright.config.ts
 ├── .oxlintrc.json, .oxfmtrc.json, tsconfig.json
 ├── AGENTS.md, README.md, ARCHITECTURE.md
@@ -613,17 +613,24 @@ Three layers. Pick the cheapest layer that can catch the bug.
 
 | Layer               | Location              | Runner                                            | Scope                                                                                                                 | In pre-commit           |
 | ------------------- | --------------------- | ------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- | ----------------------- |
-| Server              | `src/**/*.test.ts`    | `bun test ./src`                                  | parser; `loadDiff` against **real temp git repos** (branch, staged, commit, root commit, renames, deletes, untracked) | ✅                      |
+| Server              | `src/**/*.test.ts`    | Vitest under Bun (`server` project)               | parser; `loadDiff` against **real temp git repos** (branch, staged, commit, root commit, renames, deletes, untracked) | ✅                      |
 | UI unit + component | `web/**/*.test.ts(x)` | Vitest + happy-dom + Testing Library + user-event | pure logic; each component in isolation; `useReview` via `renderHook`; cross-component flows in `App.test.tsx`        | ✅                      |
 | End-to-end          | `e2e/*.e2e.ts`        | Playwright (Chromium)                             | only what needs a real browser + server                                                                               | ❌ (`bun run test:e2e`) |
 
 All three layers run in CI on every pull request.
 
-### 13.1 Why the UI isn't tested with `bun test`
+### 13.1 One unit runner: Vitest under Bun
 
-Vitest shares `vite.config.ts`, so CSS Modules and the React plugin behave exactly as in the app.
-`src/` stays on `bun test` because it uses Bun-only APIs. Running two unit runners split by
-runtime is cleaner than forcing either one onto the other.
+`bun run test` runs `bun --bun vitest run`, with two Vitest projects in `vite.config.ts`: `web`
+(happy-dom, the app's Vite plugins, so CSS Modules and React behave exactly as in the app) and
+`server` (`src/`, node environment). `--bun` makes Vitest's workers run on the Bun runtime, which
+`src/` needs for `Bun.spawn`, `Bun.serve` and `Bun.file`; under plain Node the server tests fail
+with `Bun is not defined`. Filter with `--project web` or `--project server`.
+
+The `web` project uses `pool: "vmThreads"`: each file still runs in its own VM context, so tests
+stay isolated, but happy-dom is created once per worker rather than once per file. Vitest notes
+that native globals come from the outer realm in this pool, so `instanceof` checks against
+built-ins like `Error` can fail across that boundary.
 
 ### 13.2 Component tests
 
@@ -688,13 +695,13 @@ Fixtures (`e2e/fixtures.ts`):
 
 | Tool                      | Choice                            | Notes                                                                                                                                              |
 | ------------------------- | --------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Runtime / package manager | **Bun**                           | CLI, server, scripts, `bun test`, `bun link`; version pinned via `packageManager`                                                                  |
+| Runtime / package manager | **Bun**                           | CLI, server, scripts, test runtime, `bun link`; version pinned via `packageManager`                                                                |
 | Frontend build            | **Vite**                          | `root: web`, output `dist/`, `/api` proxy in dev; large-chunk warning raised because grammars are lazy                                             |
 | UI                        | **React 19** + TypeScript         |                                                                                                                                                    |
 | Type checking             | **TypeScript 7** (`tsc --noEmit`) | `strict`, `noUncheckedIndexedAccess`, `verbatimModuleSyntax`, `moduleResolution: bundler`                                                          |
 | Lint                      | **oxlint**                        | plugins: typescript, unicorn, oxc, import, react, jsx-a11y; `correctness` + `suspicious` as errors, `perf` as warnings; run with `--deny-warnings` |
 | Format                    | **oxfmt**                         | `printWidth: 100`                                                                                                                                  |
-| Tests                     | bun test, Vitest, Playwright      | see section 13                                                                                                                                     |
+| Tests                     | Vitest (under Bun), Playwright    | see section 13                                                                                                                                     |
 | CI                        | **GitHub Actions**                | see 14.1                                                                                                                                           |
 
 **Scripts:**
@@ -702,7 +709,7 @@ Fixtures (`e2e/fixtures.ts`):
 ```sh
 bun run dev        # LOCALREVIEW_REPO=<repo>: Bun API on :4173 (--watch) + Vite on :5173 (HMR, proxies /api)
 bun run build      # vite build → dist/
-bun run check      # format:check + lint + typecheck + test:server + test:web  (pre-commit)
+bun run check      # format:check + lint + typecheck + test  (pre-commit)
 bun run test:e2e   # vite build + playwright test
 bun run format     # oxfmt (write)
 ```
@@ -776,7 +783,7 @@ bun run format     # oxfmt (write)
 | 16  | **`content-visibility: auto` + memoised `FileDiff`**                                                     | Virtualised list                                             | Virtualisation complicates sticky headers, anchors, find-in-page and variable-height comment rows. `content-visibility` gets equivalent responsiveness with one CSS property. |
 | 17  | **Drag ends via a one-off `window` `mouseup` listener added on mousedown**                               | An effect that subscribes while dragging                     | No window between mousedown and the effect subscribing; simpler.                                                                                                              |
 | 18  | **Three test layers; component tests render single components**                                          | Everything through `<App />`; everything in Playwright       | Fast, precise failures at the owning component; `App` tests only for real cross-component wiring; Playwright reserved for browser-only concerns.                              |
-| 19  | **Vitest (happy-dom) for `web/`, `bun test` for `src/`**                                                 | One runner for both                                          | `src/` needs Bun APIs; `web/` benefits from the shared Vite pipeline. happy-dom is faster than jsdom and sufficient here.                                                     |
+| 19  | **Vitest for everything, run under Bun; happy-dom for `web/`**                                           | `bun test` for `src/` alongside Vitest for `web/`            | One runner, API and config. `--bun` gives `src/` the Bun APIs it needs; `web/` keeps the shared Vite pipeline. happy-dom is faster than jsdom and sufficient here.            |
 | 20  | **Playwright: per-worker server, per-test repo reset**                                                   | A server and repo per test                                   | Much faster E2E runs while keeping isolation.                                                                                                                                 |
 | 21  | **oxlint + oxfmt, warnings as errors, enforced by hooks and CI; Conventional Commits**                   | ESLint + Prettier; CI-only enforcement                       | Very fast, low config; enforced locally before anything is committed, and again in CI for anything that skipped the hooks.                                                    |
 | 22  | **Bind to 127.0.0.1; `bin` runs TypeScript source via Bun**                                              | 0.0.0.0; a compiled binary                                   | Local-only tool; no build step needed for the CLI itself.                                                                                                                     |

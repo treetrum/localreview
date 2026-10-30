@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, test } from "bun:test";
+import { afterEach, beforeEach, describe, expect, test } from "vitest";
 import { filePath } from "../shared/types";
 import { GitError, loadDiff, MAX_CONTENT_BYTES } from "./git";
 import { createTestRepo, type TestRepo } from "./test-repo";
