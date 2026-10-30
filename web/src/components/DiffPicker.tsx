@@ -36,24 +36,27 @@ export function DiffPicker({ diff, onTargetChange, onBaseChange }: DiffPickerPro
           <div className={styles.section}>
             <label className={styles.base}>
               <span>Compare against</span>
-              <select
-                value={base ?? ""}
-                onChange={(event) => {
-                  setOpen(false);
-                  onBaseChange(event.target.value);
-                }}
-              >
-                {base === null && (
-                  <option value="" disabled>
-                    Choose a branch…
-                  </option>
-                )}
-                {diff.branches.map((name) => (
-                  <option key={name} value={name}>
-                    {name}
-                  </option>
-                ))}
-              </select>
+              <span className={styles.select}>
+                <select
+                  value={base ?? ""}
+                  onChange={(event) => {
+                    setOpen(false);
+                    onBaseChange(event.target.value);
+                  }}
+                >
+                  {base === null && (
+                    <option value="" disabled>
+                      Choose a branch…
+                    </option>
+                  )}
+                  {diff.branches.map((name) => (
+                    <option key={name} value={name}>
+                      {name}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown size={14} />
+              </span>
             </label>
             <Option
               title={base === null ? `All changes on ${on}` : `${on} vs ${base}`}
