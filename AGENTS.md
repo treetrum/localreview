@@ -6,14 +6,14 @@ non-trivial changes and keep it up to date when behaviour or structure changes.
 
 ## Layout
 
-- `src/`: Bun CLI and API server. Uses Bun APIs; tested with `bun test ./src`.
+- `src/`: Bun CLI and API server. Uses Bun APIs; tested with Vitest running under Bun.
 - `shared/`: types shared by server and UI.
 - `web/`: the React UI (Vite root). Tested with Vitest + happy-dom.
 - `e2e/`: Playwright tests (run under Node, so no Bun APIs there).
 
 ## Commands
 
-- `bun run check`: format check, lint, typecheck, server tests, UI tests. Must pass before
+- `bun run check`: format check, lint, typecheck, unit tests (`bun run test`). Must pass before
   committing (the pre-commit hook runs it).
 - `bun run test:e2e`: build + Playwright. Run it for UI or server changes.
 - `bun run format`: apply formatting.
