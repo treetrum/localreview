@@ -1,5 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
-import type { DiffResponse, ErrorResponse } from "../../../shared/types";
+import {
+  toSearchParams,
+  type DiffRequest,
+  type DiffResponse,
+  type ErrorResponse,
+} from "../../../shared/types";
 
 export type DiffState = {
   data: DiffResponse | null;
@@ -8,23 +13,31 @@ export type DiffState = {
   refresh: () => void;
 };
 
-async function fetchDiff(): Promise<DiffResponse> {
-  const res = await fetch("/api/diff", { cache: "no-store" });
+async function fetchDiff(query: string): Promise<DiffResponse> {
+  const res = await fetch(query ? `/api/diff?${query}` : "/api/diff", { cache: "no-store" });
   const body = (await res.json()) as DiffResponse | ErrorResponse;
   if ("error" in body) throw new Error(body.error);
   if (!res.ok) throw new Error(res.statusText);
   return body;
 }
 
-export function useDiff(): DiffState {
+/** Fetches the diff for `request`, refetching when it changes. The last diff stays until then. */
+export function useDiff(request: DiffRequest): DiffState {
+  const query = toSearchParams(request).toString();
   const [data, setData] = useState<DiffResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [request, setRequest] = useState(fetchDiff);
+  const [pending, setPending] = useState(() => fetchDiff(query));
+  const [pendingQuery, setPendingQuery] = useState(query);
+  if (query !== pendingQuery) {
+    setPendingQuery(query);
+    setLoading(true);
+    setPending(fetchDiff(query));
+  }
 
   useEffect(() => {
     let current = true;
-    request
+    pending
       .then(
         (diff) => {
           if (!current) return;
@@ -41,12 +54,12 @@ export function useDiff(): DiffState {
     return () => {
       current = false;
     };
-  }, [request]);
+  }, [pending]);
 
   const refresh = useCallback(() => {
     setLoading(true);
-    setRequest(fetchDiff());
-  }, []);
+    setPending(fetchDiff(pendingQuery));
+  }, [pendingQuery]);
 
   return { data, error, loading, refresh };
 }

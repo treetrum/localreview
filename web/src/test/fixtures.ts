@@ -1,4 +1,4 @@
-import type { DiffFile, DiffResponse } from "../../../shared/types";
+import type { CommitInfo, DiffFile, DiffResponse } from "../../../shared/types";
 import { addedFile, parseDiff } from "../../../src/parse-diff";
 import type { ReviewComment } from "../lib/review";
 
@@ -72,13 +72,29 @@ export const demoServerContent = [
   "",
 ].join("\n");
 
+/** Newest first, like the API. */
+export const demoCommits: CommitInfo[] = [
+  ["c3c3c3c3c3c3c3c3", "Add a health check"],
+  ["b2b2b2b2b2b2b2b2", "Log the new message"],
+  ["a1a1a1a1a1a1a1a1", "Rename util/old to util/new"],
+].map(([sha = "", subject = ""], index) => ({
+  sha,
+  subject,
+  author: "Ada",
+  date: `2026-10-0${3 - index}T09:00:00Z`,
+}));
+
 export const demoDiff: DiffResponse = {
   repoName: "demo",
   repoRoot: "/tmp/demo",
   branch: "feature",
   label: "feature vs main",
-  baseRef: "main",
+  target: { kind: "branch" },
+  base: "main",
   baseSha: "abc1234def567890",
+  branches: ["feature", "main", "origin/main"],
+  commits: demoCommits,
+  commitsScope: "branch",
   files: demoFiles,
 };
 

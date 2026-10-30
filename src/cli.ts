@@ -2,19 +2,15 @@
 import { existsSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { parseArgs } from "node:util";
-import { GitError, loadDiff, tryGit, type DiffTarget } from "./git";
+import { GitError, loadDiff, tryGit } from "./git";
 import { startServer } from "./server";
 
-const USAGE = `Usage: localreview [base-ref] [options]
+const USAGE = `Usage: localreview [options]
 
-Review a git diff in the browser and copy your comments as Markdown.
-
-Arguments:
-  base-ref              Compare against this ref instead of main/master
+Review a git diff in the browser and copy your comments as Markdown. It starts on the current
+branch vs main/master; pick another base, uncommitted or staged changes, or commits in the UI.
 
 Options:
-  --staged              Review staged changes only
-  --commit <sha>        Review a single commit
   -C, --cwd <dir>       Run as if started in <dir>
   -p, --port <port>     Port to listen on (default: 4180)
   --no-open             Don't open the browser
@@ -28,10 +24,7 @@ function fail(message: string, code = 1): never {
 function parse() {
   try {
     return parseArgs({
-      allowPositionals: true,
       options: {
-        staged: { type: "boolean" },
-        commit: { type: "string" },
         cwd: { type: "string", short: "C" },
         port: { type: "string", short: "p" },
         "no-open": { type: "boolean" },
@@ -44,18 +37,11 @@ function parse() {
   }
 }
 
-const { values, positionals } = parse();
+const { values } = parse();
 
 if (values.help) {
   console.log(USAGE);
   process.exit(0);
-}
-if (positionals.length > 1) fail(`expected at most one base ref, got ${positionals.length}`, 2);
-
-const [baseRef] = positionals;
-const targets = [baseRef !== undefined, values.staged === true, values.commit !== undefined];
-if (targets.filter(Boolean).length > 1) {
-  fail("base-ref, --staged and --commit are mutually exclusive", 2);
 }
 
 let port: number | undefined;
@@ -64,22 +50,16 @@ if (values.port !== undefined) {
   if (!Number.isInteger(port) || port < 0 || port > 65535) fail(`invalid port: ${values.port}`, 2);
 }
 
-const target: DiffTarget = values.staged
-  ? { kind: "staged" }
-  : values.commit !== undefined
-    ? { kind: "commit", sha: values.commit }
-    : { kind: "branch", base: baseRef };
-
 const cwd = resolve(values.cwd ?? process.cwd());
 if (!existsSync(cwd)) fail(`no such directory: ${cwd}`);
 if ((await tryGit(cwd, ["rev-parse", "--is-inside-work-tree"]))?.trim() !== "true") {
   fail(`not a git repository: ${cwd}`);
 }
 
-// Resolve once up front so a bad ref fails here rather than in the browser.
+// Load once up front so git problems show up here rather than only in the browser.
 let label: string;
 try {
-  label = (await loadDiff(cwd, target)).label;
+  label = (await loadDiff(cwd)).label;
 } catch (error) {
   fail(error instanceof GitError ? error.message : String(error));
 }
@@ -91,7 +71,7 @@ if (!existsSync(join(distDir, "index.html"))) {
 
 let server: ReturnType<typeof startServer>;
 try {
-  server = startServer({ cwd, target, distDir, port });
+  server = startServer({ cwd, distDir, port });
 } catch (error) {
   fail(`couldn't start the server: ${(error as Error).message}`);
 }

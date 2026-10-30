@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useState } from "react";
-import { filePath, type DiffResponse } from "../../shared/types";
+import { filePath, type DiffResponse, type DiffTarget } from "../../shared/types";
+import { DiffPicker } from "./components/DiffPicker";
 import { FileDiff } from "./components/FileDiff";
 import { FileNav } from "./components/FileNav";
 import { Check, Columns2, Copy, RefreshCw, Rows2, TriangleAlert } from "./components/icons";
@@ -14,12 +15,23 @@ import { isDiffView, type DiffView } from "./lib/rows";
 import { buildTree, filterTree, treeOrder } from "./lib/tree";
 import { useCopy } from "./lib/useCopy";
 import { useDiff } from "./lib/useDiff";
+import { useDiffRequest } from "./lib/useDiffRequest";
 import { useLocalStorage } from "./lib/useLocalStorage";
 import { useReview } from "./lib/useReview";
 import styles from "./App.module.css";
 
 export function App() {
-  const { data, error, loading, refresh } = useDiff();
+  const [request, setRequest] = useDiffRequest();
+  const { data, error, loading, refresh } = useDiff(request);
+  const changeTarget = useCallback(
+    (target: DiffTarget) => setRequest({ ...request, target }),
+    [request, setRequest],
+  );
+  const changeBase = useCallback(
+    (base: string) => setRequest({ target: { kind: "branch" }, base }),
+    [setRequest],
+  );
+  const isDefault = request.target === undefined && request.base === undefined;
 
   if (!data) {
     if (error) {
@@ -28,9 +40,16 @@ export function App() {
           <TriangleAlert size={24} />
           <h1>Couldn't load the diff</h1>
           <pre className={styles.errorText}>{error}</pre>
-          <Button onClick={refresh} disabled={loading}>
-            Try again
-          </Button>
+          <div className={styles.stateActions}>
+            <Button onClick={refresh} disabled={loading}>
+              Try again
+            </Button>
+            {!isDefault && (
+              <Button variant="outline" onClick={() => setRequest({})}>
+                Show the default diff
+              </Button>
+            )}
+          </div>
         </main>
       );
     }
@@ -48,6 +67,8 @@ export function App() {
       error={error}
       refreshing={loading}
       onRefresh={refresh}
+      onTargetChange={changeTarget}
+      onBaseChange={changeBase}
     />
   );
 }
@@ -60,9 +81,11 @@ type ReviewProps = {
   error: string | null;
   refreshing: boolean;
   onRefresh: () => void;
+  onTargetChange: (target: DiffTarget) => void;
+  onBaseChange: (base: string) => void;
 };
 
-function Review({ diff, error, refreshing, onRefresh }: ReviewProps) {
+function Review({ diff, error, refreshing, onRefresh, onTargetChange, onBaseChange }: ReviewProps) {
   const { review, actions } = useReview(storageKey(diff));
   const [query, setQuery] = useState("");
   const [hideViewed, setHideViewed] = useLocalStorage("localreview:hideViewed", false, isBoolean);
@@ -135,7 +158,7 @@ function Review({ diff, error, refreshing, onRefresh }: ReviewProps) {
       <header className={styles.header}>
         <div className={styles.title}>
           <h1 className={styles.repo}>{diff.repoName}</h1>
-          <span className={styles.label}>{diff.label}</span>
+          <DiffPicker diff={diff} onTargetChange={onTargetChange} onBaseChange={onBaseChange} />
           <code className={styles.sha} title={diff.baseSha}>
             {diff.baseSha.slice(0, 7)}
           </code>
@@ -198,7 +221,7 @@ function Review({ diff, error, refreshing, onRefresh }: ReviewProps) {
       <main className={styles.main}>
         {error && (
           <p className={styles.banner} role="alert">
-            <TriangleAlert size={16} /> Couldn't refresh: {error}
+            <TriangleAlert size={16} /> Couldn't load the diff: {error}
           </p>
         )}
         <section className={styles.summary}>

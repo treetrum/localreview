@@ -26,11 +26,8 @@ After pulling UI changes, run `bun run build` again.
 ## Usage
 
 ```
-localreview [base-ref] [options]
+localreview [options]
 
-  base-ref              Compare against this ref instead of main/master
-  --staged              Review staged changes only
-  --commit <sha>        Review a single commit
   -C, --cwd <dir>       Run as if started in <dir>
   -p, --port <port>     Port to listen on (default: 4180)
   --no-open             Don't open the browser
@@ -38,7 +35,17 @@ localreview [base-ref] [options]
 ```
 
 By default localreview shows everything on the current branch (committed, uncommitted and
-untracked) against its merge-base with `main` (or `master`).
+untracked) against its merge-base with `main` (or `master`). Click the diff label in the header to
+review something else:
+
+- **Compare against** another base branch.
+- **Uncommitted changes**: staged, unstaged and untracked changes since the last commit.
+- **Staged changes** only.
+- **A commit** from the branch (or recent history, on `main`). Shift-click a second commit to
+  review a range.
+
+The choice is kept in the URL, so reloading keeps it and back/forward step between them. Each diff
+has its own comments and viewed marks.
 
 In the browser:
 
