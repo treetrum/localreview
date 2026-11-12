@@ -11,6 +11,7 @@ const actions: ReviewActions = {
   deleteComment: vi.fn(),
   setSummary: vi.fn(),
   setViewed: vi.fn(),
+  clearViewed: vi.fn(),
   clear: vi.fn(),
 };
 
@@ -275,6 +276,19 @@ describe("FileDiff", () => {
     expect(screen.getByRole("table")).toBeInTheDocument();
     rerender(<FileDiff {...defaultProps} viewed />);
     expect(screen.queryByRole("table")).not.toBeInTheDocument();
+  });
+
+  test("does expand a collapsed file when it's opened from the sidebar", async () => {
+    const user = userEvent.setup();
+    const { rerender } = render(<FileDiff {...defaultProps} viewed />);
+    expect(screen.queryByRole("table")).not.toBeInTheDocument();
+
+    rerender(<FileDiff {...defaultProps} viewed openRequest={1} />);
+    expect(screen.getByRole("table")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Collapse file" }));
+    rerender(<FileDiff {...defaultProps} viewed openRequest={2} />);
+    expect(screen.getByRole("table")).toBeInTheDocument();
   });
 
   test("does show a notice instead of lines when the file is binary", () => {

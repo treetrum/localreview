@@ -44,6 +44,8 @@ export type FileDiffProps = {
   actions: ReviewActions;
   hidden?: boolean;
   view?: DiffView;
+  /** Changes each time the file is opened from the sidebar, which expands it. */
+  openRequest?: number;
 };
 
 /** Selected lines, by `posKey`, so the selection survives rows being revealed above it. */
@@ -61,6 +63,7 @@ export const FileDiff = memo(function FileDiff({
   actions,
   hidden = false,
   view = "unified",
+  openRequest = 0,
 }: FileDiffProps) {
   const sectionRef = useRef<HTMLElement>(null);
   const highlighted = useHighlightedFile(sectionRef, file);
@@ -71,6 +74,11 @@ export const FileDiff = memo(function FileDiff({
   if (viewed !== prevViewed) {
     setPrevViewed(viewed);
     setCollapsed(viewed);
+  }
+  const [prevOpenRequest, setPrevOpenRequest] = useState(openRequest);
+  if (openRequest !== prevOpenRequest) {
+    setPrevOpenRequest(openRequest);
+    if (openRequest) setCollapsed(false);
   }
 
   const [selection, setSelection] = useState<Selection | null>(null);

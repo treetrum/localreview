@@ -53,23 +53,23 @@ diff changed is automatically un-marked as viewed.
 
 ## 2. Features
 
-| Area                          | Behaviour                                                                                                                                                                  |
-| ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Diff picker**               | Click the diff label in the header to switch: branch vs any base branch (default: `main`/`master`), uncommitted, staged, one commit, or a range (shift-click). In the URL. |
-| **Diff view**                 | **Unified** or **split** (side by side, like GitHub), toggled in the header and remembered. Hunk headers, line numbers, wrapped lines, sticky headers, highlighting.       |
-| **Expand context**            | Hunk headers carry GitHub-style expand buttons: 20 lines up or down, or all of a gap of 20 or fewer. **Expand all lines** in the file header shows the whole file.         |
-| **Line comments**             | Hover a line and click **+**. Drag across rows, or shift-click a second **+**, for a range. Comments on deleted lines are anchored to the old side.                        |
-| **File and overall comments** | **Comment on file** per file; an **Overall feedback** box for the whole change.                                                                                            |
-| **Editing**                   | Edit and delete comments. ⌘/Ctrl+↵ submits, Esc cancels.                                                                                                                   |
-| **Outdated comments**         | If a commented line disappears after a refresh, the comment moves to the top of the file with an _Outdated_ badge. It's still included when copying.                       |
-| **Copy review**               | Formats all feedback as Markdown (with `diff` snippets) and copies it to the clipboard.                                                                                    |
-| **Copy file path**            | An icon button beside each file's path copies it (the new path for renames) to the clipboard.                                                                              |
-| **Persistence**               | Comments, summary and viewed state are saved in `localStorage` per repo and diff target. **Clear** removes feedback but keeps viewed state.                                |
-| **Viewed tracking**           | A per-file **Viewed** checkbox collapses the file. A progress bar in the header shows _x/y viewed_. Viewed marks reset automatically when a file's diff changes.           |
-| **File navigation**           | Sidebar with **tree** view (collapsible folders, single-child chains compressed like `src/components`) or **list** view (filename + directory). The choice is remembered.  |
-| **Filter**                    | Path search (case-insensitive; space-separated terms must all match) that narrows both the sidebar and the diff. Debounced; `/` focuses it, Esc clears it.                 |
-| **Hide viewed files**         | A sidebar toggle that hides viewed files from both the sidebar and the diff, so only what's left to review shows. Remembered across reloads.                               |
-| **Refresh**                   | Reloads the diff from git without restarting.                                                                                                                              |
+| Area                          | Behaviour                                                                                                                                                                                                                            |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Diff picker**               | Click the diff label in the header to switch: branch vs any base branch (default: `main`/`master`), uncommitted, staged, one commit, or a range (shift-click). In the URL.                                                           |
+| **Diff view**                 | **Unified** or **split** (side by side, like GitHub), toggled in the header and remembered. Hunk headers, line numbers, wrapped lines, sticky headers, highlighting.                                                                 |
+| **Expand context**            | Hunk headers carry GitHub-style expand buttons: 20 lines up or down, or all of a gap of 20 or fewer. **Expand all lines** in the file header shows the whole file.                                                                   |
+| **Line comments**             | Hover a line and click **+**. Drag across rows, or shift-click a second **+**, for a range. Comments on deleted lines are anchored to the old side.                                                                                  |
+| **File and overall comments** | **Comment on file** per file; an **Overall feedback** box for the whole change.                                                                                                                                                      |
+| **Editing**                   | Edit, delete or copy comments. **Copy comment** copies just that one as Markdown feedback. ⌘/Ctrl+↵ submits, Esc cancels.                                                                                                            |
+| **Outdated comments**         | If a commented line disappears after a refresh, the comment moves to the top of the file with an _Outdated_ badge. It's still included when copying.                                                                                 |
+| **Copy review**               | Formats all feedback as Markdown (with `diff` snippets) and copies it to the clipboard.                                                                                                                                              |
+| **Copy file path**            | An icon button beside each file's path copies it (the new path for renames) to the clipboard.                                                                                                                                        |
+| **Persistence**               | Comments, summary and viewed state are saved in `localStorage` per repo and diff target. **Clear** removes feedback but keeps viewed state.                                                                                          |
+| **Viewed tracking**           | A per-file **Viewed** checkbox collapses the file. A progress bar in the header shows _x/y viewed_. Viewed marks reset automatically when a file's diff changes. **Mark all as unviewed** (after a confirm) resets them all.         |
+| **File navigation**           | Sidebar with **tree** view (collapsible folders, single-child chains compressed like `src/components`) or **list** view (filename + directory). The choice is remembered. Clicking a file scrolls to it and expands it if collapsed. |
+| **Filter**                    | Path search (case-insensitive; space-separated terms must all match) that narrows both the sidebar and the diff. Debounced; `/` focuses it, Esc clears it.                                                                           |
+| **Hide viewed files**         | A sidebar toggle that hides viewed files from both the sidebar and the diff, so only what's left to review shows. Remembered across reloads.                                                                                         |
+| **Refresh**                   | Reloads the diff from git without restarting.                                                                                                                                                                                        |
 
 ---
 
@@ -341,7 +341,8 @@ A file's identity in the UI is `filePath(file)`, which is `oldPath` for deleted 
 App                              diff request (URL), load states (loading / error + Try again /
 │                                Show the default diff / ready)
 └── Review  key=storageKey       owns review state, filter query, derived data
-    ├── header                   repo, DiffPicker (label ▾), base SHA, progress, unified ⇄ split,
+    ├── header                   repo, DiffPicker (label ▾), base SHA, progress + Mark all as
+    │                            unviewed, unified ⇄ split,
     │                            refresh, Clear, Copy review
     ├── FileNav                  sidebar
     │   ├── FileSearch           owns raw input text + debounce timer
@@ -365,20 +366,21 @@ a stale link (e.g. a commit that's been rebased away) isn't a dead end.
 
 ### 7.2 State ownership
 
-| State                                            | Owner                           | Persisted                                        |
-| ------------------------------------------------ | ------------------------------- | ------------------------------------------------ |
-| Diff request (target, base)                      | `useDiffRequest` (in `App`)     | URL query string (history entries)               |
-| Diff data, loading/error/refreshing              | `useDiff` (in `App`)            | no (refetched)                                   |
-| Comments, summary, viewed marks                  | `useReview` (in `Review`)       | `localStorage["localreview:<repoRoot>:<label>"]` |
-| Applied filter query                             | `Review`                        | no                                               |
-| Hide viewed files                                | `Review` via `useLocalStorage`  | `localStorage["localreview:hideViewed"]`         |
-| Raw filter input text, debounce timer            | `FileSearch`                    | no                                               |
-| Tree vs list view                                | `FileNav` via `useLocalStorage` | `localStorage["localreview:fileView"]`           |
-| Unified vs split diff view                       | `Review` via `useLocalStorage`  | `localStorage["localreview:diffView"]`           |
-| Collapsed folders                                | `Tree`                          | no                                               |
-| Collapsed file, line selection, drag, file draft | `FileDiff`                      | no                                               |
-| Revealed context lines                           | `FileDiff`                      | no (lines with comments are always revealed)     |
-| Copied flash (2 s)                               | `Review`                        | no                                               |
+| State                                             | Owner                           | Persisted                                        |
+| ------------------------------------------------- | ------------------------------- | ------------------------------------------------ |
+| Diff request (target, base)                       | `useDiffRequest` (in `App`)     | URL query string (history entries)               |
+| Diff data, loading/error/refreshing               | `useDiff` (in `App`)            | no (refetched)                                   |
+| Comments, summary, viewed marks                   | `useReview` (in `Review`)       | `localStorage["localreview:<repoRoot>:<label>"]` |
+| Applied filter query                              | `Review`                        | no                                               |
+| Hide viewed files                                 | `Review` via `useLocalStorage`  | `localStorage["localreview:hideViewed"]`         |
+| Raw filter input text, debounce timer             | `FileSearch`                    | no                                               |
+| Tree vs list view                                 | `FileNav` via `useLocalStorage` | `localStorage["localreview:fileView"]`           |
+| Unified vs split diff view                        | `Review` via `useLocalStorage`  | `localStorage["localreview:diffView"]`           |
+| Collapsed folders                                 | `Tree`                          | no                                               |
+| Collapsed file, line selection, drag, file draft  | `FileDiff`                      | no                                               |
+| Revealed context lines                            | `FileDiff`                      | no (lines with comments are always revealed)     |
+| Copied flash (2 s)                                | `Review`                        | no                                               |
+| Last file opened from the sidebar (`openRequest`) | `Review`                        | no                                               |
 
 Derived in `Review` (memoised): the tree, files in tree order, visible files/tree/paths for the
 filter, `fileId` (path → `file-<index>`), fingerprints, comments grouped by path, comment counts,
@@ -462,6 +464,13 @@ passed to every `FileDiff` as a prop.
 - `FileDiff` keeps its own `collapsed` state, initialised from `viewed` and **re-synced when
   `viewed` changes** (React's "adjust state when a prop changes" pattern, without an effect). That
   lets the user still expand a viewed file manually.
+- Clicking a file in the sidebar follows its anchor and calls `onFileOpen(path)`. `Review` stores
+  `{ path, seq }` with an incrementing `seq` and passes the `seq` as that file's `openRequest`
+  prop; a change expands the file (same "adjust state on prop change" pattern), so clicking the
+  same file again after collapsing it expands it again. Only the opened file's prop changes, so
+  memoised `FileDiff`s elsewhere don't re-render.
+- **Mark all as unviewed** (`actions.clearViewed`, behind a confirm) empties `viewed`, which
+  expands every file through the sync above.
 - When collapsing a file whose top has scrolled above the viewport, the view scrolls back to its
   header so you don't lose your place.
 
@@ -598,6 +607,10 @@ Rules:
 - **Snippets** use a `diff` fence with `+`/`-`/space prefixes, so the agent sees what changed. The
   fence grows longer than any backtick run inside the snippet so it can't close early.
 - **Blank comments** are skipped. **Copy review** is disabled unless there's real feedback.
+
+`formatComment(comment, outdated)` formats one comment the same way (its file heading, range
+heading and snippet, without the review title or overall feedback) for the **Copy comment** button
+on each comment card. Its intro drops the line-number note for file-level comments.
 
 ---
 

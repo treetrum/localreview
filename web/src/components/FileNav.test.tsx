@@ -10,6 +10,7 @@ const files = treeOrder(tree);
 
 const onQueryChange = vi.fn<(query: string) => void>();
 const onHideViewedChange = vi.fn<(hideViewed: boolean) => void>();
+const onFileOpen = vi.fn<(path: string) => void>();
 const defaultProps: FileNavProps = {
   tree,
   files,
@@ -21,6 +22,7 @@ const defaultProps: FileNavProps = {
   fileId: new Map(files.map((file, i) => [file.newPath, `file-${i}`])),
   viewed: new Set(),
   commentCounts: new Map(),
+  onFileOpen,
 };
 
 const link = (name: RegExp) => screen.getByRole("link", { name });
@@ -124,6 +126,13 @@ describe("FileNav", () => {
     render(<FileNav {...defaultProps} files={files.slice(0, 1)} />);
     await user.type(screen.getByLabelText("Filter files"), "notes");
     expect(screen.getByText(`1/${files.length}`)).toBeInTheDocument();
+  });
+
+  test("does report the path when a file is clicked", async () => {
+    const user = userEvent.setup();
+    render(<FileNav {...defaultProps} />);
+    await user.click(link(/server\.ts/));
+    expect(onFileOpen).toHaveBeenCalledWith("src/server.ts");
   });
 
   test("does show viewed ticks and comment counts on files", () => {

@@ -39,6 +39,7 @@ export type FileNavProps = {
   fileId: ReadonlyMap<string, string>;
   viewed: ReadonlySet<string>;
   commentCounts: ReadonlyMap<string, number>;
+  onFileOpen: (path: string) => void;
 };
 
 export const FileNav = memo(function FileNav({
@@ -52,6 +53,7 @@ export const FileNav = memo(function FileNav({
   fileId,
   viewed,
   commentCounts,
+  onFileOpen,
 }: FileNavProps) {
   const [view, setView] = useLocalStorage<FileView>("localreview:fileView", "tree", isFileView);
   const hideViewedTip = useTooltip("Hide viewed files");
@@ -66,6 +68,7 @@ export const FileNav = memo(function FileNav({
         showDir={showDir}
         viewed={viewed.has(path)}
         comments={commentCounts.get(path) ?? 0}
+        onOpen={() => onFileOpen(path)}
       />
     );
   };
@@ -247,9 +250,10 @@ type FileRowProps = {
   showDir: boolean;
   viewed: boolean;
   comments: number;
+  onOpen: () => void;
 };
 
-function FileRow({ file, href, depth, showDir, viewed, comments }: FileRowProps) {
+function FileRow({ file, href, depth, showDir, viewed, comments, onOpen }: FileRowProps) {
   const path = filePath(file);
   const slash = path.lastIndexOf("/");
   const name = path.slice(slash + 1);
@@ -261,6 +265,7 @@ function FileRow({ file, href, depth, showDir, viewed, comments }: FileRowProps)
         className={cx(styles.file, viewed && styles.viewedFile, showDir && styles.listFile)}
         style={{ "--depth": depth } as CSSProperties}
         title={path}
+        onClick={onOpen}
       >
         <FileStatusBadge status={file.status} compact />
         <span className={styles.name}>{name}</span>

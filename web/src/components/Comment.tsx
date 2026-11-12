@@ -1,6 +1,8 @@
 import { useState } from "react";
+import { formatComment } from "../lib/format";
 import { rangeLabel, type ReviewComment } from "../lib/review";
-import { Pencil, Trash } from "./icons";
+import { useCopy } from "../lib/useCopy";
+import { Check, Copy, Pencil, Trash } from "./icons";
 import { Badge } from "./ui/Badge";
 import { Button } from "./ui/Button";
 import { Textarea } from "./ui/Textarea";
@@ -74,6 +76,7 @@ export type CommentCardProps = {
 
 export function CommentCard({ comment, outdated = false, onUpdate, onDelete }: CommentCardProps) {
   const [editing, setEditing] = useState(false);
+  const [copied, copy] = useCopy();
 
   if (editing) {
     return (
@@ -95,6 +98,15 @@ export function CommentCard({ comment, outdated = false, onUpdate, onDelete }: C
         <span>{comment.range ? rangeLabel(comment.range) : "File comment"}</span>
         {outdated && <Badge className={styles.outdated}>Outdated</Badge>}
         <span className={styles.tools}>
+          <Button
+            variant="ghost"
+            size="icon-xs"
+            aria-label={copied ? "Copied comment" : "Copy comment"}
+            title="Copy this comment as feedback"
+            onClick={() => void copy(formatComment(comment, outdated))}
+          >
+            {copied ? <Check size={14} /> : <Copy size={14} />}
+          </Button>
           <Button
             variant="ghost"
             size="icon-xs"

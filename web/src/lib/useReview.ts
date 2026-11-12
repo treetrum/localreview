@@ -7,6 +7,7 @@ export type ReviewActions = {
   deleteComment: (id: string) => void;
   setSummary: (summary: string) => void;
   setViewed: (path: string, fingerprint: string | null) => void;
+  clearViewed: () => void;
   /** Removes the summary and comments but keeps viewed marks. */
   clear: () => void;
 };
@@ -62,6 +63,7 @@ export function useReview(storageKey: string): { review: ReviewState; actions: R
           else viewed[path] = fingerprint;
           return { ...r, viewed };
         }),
+      clearViewed: () => setReview((r) => ({ ...r, viewed: {} })),
       clear: () => setReview((r) => ({ ...emptyReview(), viewed: r.viewed })),
     }),
     [],

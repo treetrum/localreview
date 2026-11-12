@@ -44,15 +44,30 @@ export function formatReview({ label, files, summary, comments }: FormatInput): 
     );
 
     for (const comment of sorted) {
-      if (comment.range) {
-        const outdated = !positions.has(posKey(comment.range.end));
-        sections.push(`### ${rangeLabel(comment.range)}${outdated ? " (outdated)" : ""}`);
-        if (comment.snippet.length > 0) sections.push(diffFence(comment.snippet));
-      }
-      sections.push(comment.body.trim());
+      const outdated = comment.range !== null && !positions.has(posKey(comment.range.end));
+      sections.push(...commentSections(comment, outdated));
     }
   }
   return `${sections.join("\n\n")}\n`;
+}
+
+/** One comment on its own, to hand a single piece of feedback to the agent. */
+export function formatComment(comment: ReviewComment, outdated = false): string {
+  const intro = comment.range
+    ? "Please address the following review comment. Line numbers refer to the new version of the file unless marked as deleted."
+    : "Please address the following review comment.";
+  const sections = [intro, `## ${inlineCode(comment.path)}`, ...commentSections(comment, outdated)];
+  return `${sections.join("\n\n")}\n`;
+}
+
+function commentSections(comment: ReviewComment, outdated: boolean): string[] {
+  const sections: string[] = [];
+  if (comment.range) {
+    sections.push(`### ${rangeLabel(comment.range)}${outdated ? " (outdated)" : ""}`);
+    if (comment.snippet.length > 0) sections.push(diffFence(comment.snippet));
+  }
+  sections.push(comment.body.trim());
+  return sections;
 }
 
 const PREFIX = { add: "+", del: "-", context: " " } as const;
