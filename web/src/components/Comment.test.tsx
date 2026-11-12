@@ -72,6 +72,26 @@ describe("CommentCard", () => {
     expect(defaultProps.onDelete).toHaveBeenCalledWith("c1");
   });
 
+  test("does copy just this comment as Markdown feedback", async () => {
+    const user = userEvent.setup();
+    render(<CommentCard {...defaultProps} outdated />);
+    await user.click(screen.getByRole("button", { name: "Copy comment" }));
+    expect(screen.getByRole("button", { name: "Copied comment" })).toBeInTheDocument();
+    expect(await navigator.clipboard.readText())
+      .toBe(`Please address the following review comment. Line numbers refer to the new version of the file unless marked as deleted.
+
+## \`src/server.ts\`
+
+### Line 6 (outdated)
+
+\`\`\`diff
++    async fetch(req) {
+\`\`\`
+
+Why make this async?
+`);
+  });
+
   test("does show the badge and snippet when the comment is outdated", () => {
     render(<CommentCard {...defaultProps} outdated />);
     expect(screen.getByText("Outdated")).toBeInTheDocument();

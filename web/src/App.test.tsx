@@ -101,6 +101,36 @@ describe("App", () => {
     expect(within(navLink(/server\.ts/)).getByText("Viewed")).toBeInTheDocument();
   });
 
+  test("does mark every file unviewed only after confirming", async () => {
+    const confirm = vi.fn().mockReturnValueOnce(false).mockReturnValueOnce(true);
+    vi.stubGlobal("confirm", confirm);
+    const { user } = renderApp();
+    await ready();
+    const unviewAll = screen.getByRole("button", { name: "Mark all as unviewed" });
+    expect(unviewAll).toBeDisabled();
+    await user.click(within(section("src/server.ts")).getByRole("checkbox", { name: "Viewed" }));
+    await user.click(within(section("src/util/new.ts")).getByRole("checkbox", { name: "Viewed" }));
+
+    await user.click(unviewAll);
+    expect(screen.getByText("2/4 viewed")).toBeInTheDocument();
+
+    await user.click(unviewAll);
+    expect(screen.getByText("0/4 viewed")).toBeInTheDocument();
+    expect(within(section("src/server.ts")).getByRole("table")).toBeInTheDocument();
+  });
+
+  test("does expand a collapsed file when it's clicked in the sidebar", async () => {
+    const { user } = renderApp();
+    await ready();
+    const server = section("src/server.ts");
+    await user.click(within(server).getByRole("checkbox", { name: "Viewed" }));
+    expect(within(server).queryByRole("table")).not.toBeInTheDocument();
+
+    await user.click(navLink(/server\.ts/));
+    expect(within(server).getByRole("table")).toBeInTheDocument();
+    expect(within(server).getByRole("checkbox", { name: "Viewed" })).toBeChecked();
+  });
+
   test("does un-mark only changed files when refreshing", async () => {
     const { user, respond } = renderApp();
     await ready();

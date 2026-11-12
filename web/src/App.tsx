@@ -3,7 +3,15 @@ import { filePath, type DiffResponse, type DiffTarget } from "../../shared/types
 import { DiffPicker } from "./components/DiffPicker";
 import { FileDiff } from "./components/FileDiff";
 import { FileNav } from "./components/FileNav";
-import { Check, Columns2, Copy, RefreshCw, Rows2, TriangleAlert } from "./components/icons";
+import {
+  Check,
+  Columns2,
+  Copy,
+  RefreshCw,
+  RotateCcw,
+  Rows2,
+  TriangleAlert,
+} from "./components/icons";
 import { Button } from "./components/ui/Button";
 import { Progress } from "./components/ui/Progress";
 import { Textarea } from "./components/ui/Textarea";
@@ -91,6 +99,11 @@ function Review({ diff, error, refreshing, onRefresh, onTargetChange, onBaseChan
   const [hideViewed, setHideViewed] = useLocalStorage("localreview:hideViewed", false, isBoolean);
   const [view, setView] = useLocalStorage<DiffView>("localreview:diffView", "unified", isDiffView);
   const [copied, copyText] = useCopy();
+  const [openRequest, setOpenRequest] = useState<{ path: string; seq: number } | null>(null);
+  const openFile = useCallback(
+    (path: string) => setOpenRequest((current) => ({ path, seq: (current?.seq ?? 0) + 1 })),
+    [],
+  );
 
   const tree = useMemo(() => buildTree(diff.files), [diff.files]);
   const files = useMemo(() => treeOrder(tree), [tree]);
@@ -153,6 +166,10 @@ function Review({ diff, error, refreshing, onRefresh, onTargetChange, onBaseChan
     }
   };
 
+  const clearViewed = () => {
+    if (window.confirm("Mark all files as unviewed?")) actions.clearViewed();
+  };
+
   return (
     <div className={styles.layout}>
       <header className={styles.header}>
@@ -172,6 +189,16 @@ function Review({ diff, error, refreshing, onRefresh, onTargetChange, onBaseChan
           <span>
             {viewedPaths.size}/{files.length} viewed
           </span>
+          <Button
+            variant="ghost"
+            size="icon-xs"
+            aria-label="Mark all as unviewed"
+            title="Mark all as unviewed"
+            disabled={viewedPaths.size === 0}
+            onClick={clearViewed}
+          >
+            <RotateCcw size={14} />
+          </Button>
         </div>
         <div className={styles.actions}>
           <ToggleGroup
@@ -215,6 +242,7 @@ function Review({ diff, error, refreshing, onRefresh, onTargetChange, onBaseChan
           fileId={fileId}
           viewed={viewedPaths}
           commentCounts={commentCounts}
+          onFileOpen={openFile}
         />
       </aside>
 
@@ -270,6 +298,7 @@ function Review({ diff, error, refreshing, onRefresh, onTargetChange, onBaseChan
               actions={actions}
               hidden={!visiblePaths.has(path)}
               view={view}
+              openRequest={openRequest?.path === path ? openRequest.seq : 0}
             />
           );
         })}

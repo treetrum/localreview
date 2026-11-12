@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 import { demoFiles, demoServerContent, mockComment } from "../test/fixtures";
-import { formatReview } from "./format";
+import { formatComment, formatReview } from "./format";
 import type { ReviewComment } from "./review";
 import { buildTree, treeOrder } from "./tree";
 
@@ -166,5 +166,17 @@ Extract the routing.
     });
     expect(markdown).not.toContain("## Overall");
     expect(markdown).not.toContain("src/server.ts");
+  });
+});
+
+describe("formatComment", () => {
+  test("does omit the line-number note when the comment is on the whole file", () => {
+    expect(formatComment(comment({ range: null, snippet: [], body: " Split this. " })))
+      .toBe(`Please address the following review comment.
+
+## \`src/server.ts\`
+
+Split this.
+`);
   });
 });
