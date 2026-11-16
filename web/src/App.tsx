@@ -13,6 +13,7 @@ import {
   RefreshCw,
   RotateCcw,
   Rows2,
+  Space,
   TriangleAlert,
 } from "./components/icons";
 import { Button } from "./components/ui/Button";
@@ -108,6 +109,11 @@ function Review({ diff, error, refreshing, onRefresh, onTargetChange, onBaseChan
   const [query, setQuery] = useState("");
   const [hideViewed, setHideViewed] = useLocalStorage("localreview:hideViewed", false, isBoolean);
   const [view, setView] = useLocalStorage<DiffView>("localreview:diffView", "unified", isDiffView);
+  const [ignoreWhitespace, setIgnoreWhitespace] = useLocalStorage(
+    "localreview:hideWhitespace",
+    false,
+    isBoolean,
+  );
   const [showComments, setShowComments] = useLocalStorage(
     "localreview:commentsPanel",
     false,
@@ -125,6 +131,16 @@ function Review({ diff, error, refreshing, onRefresh, onTargetChange, onBaseChan
   const fileId = useMemo(
     () => new Map(files.map((file, index) => [filePath(file), `file-${index}`])),
     [files],
+  );
+  // Viewed marks and the copied review use the full diff, so they don't depend on the toggle.
+  const shownFiles = useMemo(
+    () =>
+      ignoreWhitespace
+        ? files.map((file) =>
+            file.ignoringWhitespace ? { ...file, ...file.ignoringWhitespace } : file,
+          )
+        : files,
+    [files, ignoreWhitespace],
   );
   const fingerprints = useMemo(
     () => new Map(files.map((file) => [filePath(file), fileFingerprint(file)])),
@@ -258,6 +274,17 @@ function Review({ diff, error, refreshing, onRefresh, onTargetChange, onBaseChan
           <Button
             variant="ghost"
             size="icon-sm"
+            className={styles.toggle}
+            aria-label="Hide whitespace"
+            aria-pressed={ignoreWhitespace}
+            title={ignoreWhitespace ? "Show whitespace changes" : "Hide whitespace changes"}
+            onClick={() => setIgnoreWhitespace(!ignoreWhitespace)}
+          >
+            <Space />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon-sm"
             aria-label="Refresh"
             title="Reload the diff from git"
             disabled={refreshing}
@@ -346,7 +373,7 @@ function Review({ diff, error, refreshing, onRefresh, onTargetChange, onBaseChan
           )
         )}
 
-        {files.map((file) => {
+        {shownFiles.map((file, index) => {
           const path = filePath(file);
           return (
             <FileDiff
@@ -361,6 +388,8 @@ function Review({ diff, error, refreshing, onRefresh, onTargetChange, onBaseChan
               hidden={!visiblePaths.has(path)}
               view={view}
               openRequest={openRequest?.path === path ? openRequest.seq : 0}
+              ignoreWhitespace={ignoreWhitespace}
+              whitespaceOnly={file.hunks.length === 0 && files[index]!.hunks.length > 0}
             />
           );
         })}

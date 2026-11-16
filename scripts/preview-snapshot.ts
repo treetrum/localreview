@@ -133,6 +133,7 @@ const stylesBase = `.cart {
 }
 `;
 
+// .total is only re-indented, so Hide whitespace has something to hide.
 const stylesHead = `.cart {
   display: grid;
   gap: 12px;
@@ -141,7 +142,7 @@ const stylesHead = `.cart {
 }
 
 .total {
-  font-weight: 600;
+    font-weight: 600;
 }
 
 .discount {

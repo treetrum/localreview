@@ -102,6 +102,7 @@
   font-variant-numeric: tabular-nums;
 }
 
+.toggle[aria-pressed="true"],
 .commentsToggle[aria-pressed="true"] {
   background: var(--accent);
 }

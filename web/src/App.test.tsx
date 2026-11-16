@@ -18,6 +18,9 @@ function sameRow(path: string, a: string, b: string) {
   );
 }
 
+const plusIn = (path: string, line: string) =>
+  within(section(path)).getByRole("button", { name: `Comment on ${line}` });
+
 async function ready() {
   await screen.findByRole("heading", { name: "demo" });
 }
@@ -347,6 +350,41 @@ Split this file
     expect(summary).toHaveValue("");
     expect(confirm).toHaveBeenCalledTimes(2);
     expect(screen.getByText("1/4 viewed")).toBeInTheDocument();
+  });
+
+  test("does hide whitespace changes, keep viewed marks and remember the choice", async () => {
+    const whitespace: DiffResponse = {
+      ...demoDiff,
+      files: demoFiles.map((file) =>
+        file.newPath === "src/util/new.ts"
+          ? { ...file, ignoringWhitespace: { hunks: [], additions: 0, deletions: 0 } }
+          : file,
+      ),
+    };
+    const { user, unmount } = renderApp({ status: 200, body: whitespace });
+    await ready();
+    await user.click(within(section("src/util/new.ts")).getByRole("checkbox", { name: "Viewed" }));
+    await user.click(
+      within(section("src/util/new.ts")).getByRole("button", { name: "Expand file" }),
+    );
+    const toggle = screen.getByRole("button", { name: "Hide whitespace" });
+    expect(toggle).toHaveAttribute("aria-pressed", "false");
+
+    await user.click(toggle);
+    expect(toggle).toHaveAttribute("aria-pressed", "true");
+    expect(
+      within(section("src/util/new.ts")).getByText("Only whitespace changes, which are hidden."),
+    ).toBeInTheDocument();
+    expect(plusIn("src/server.ts", "deleted line 6")).toBeInTheDocument();
+    expect(screen.getByText("1/4 viewed")).toBeInTheDocument();
+
+    unmount();
+    renderApp({ status: 200, body: whitespace });
+    await ready();
+    expect(screen.getByRole("button", { name: "Hide whitespace" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
   });
 
   test("does switch every file to split view and remember the choice", async () => {

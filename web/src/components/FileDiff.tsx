@@ -9,7 +9,8 @@ import {
   type DiffRow,
   type Span,
 } from "../lib/expand";
-import { lineTokens, type Token } from "../lib/highlight";
+import { lineTokens } from "../lib/highlight";
+import { intralineChanges, markTokens, type MarkedToken } from "../lib/intraline";
 import { linePos, posKey, type ReviewComment, type Side } from "../lib/review";
 import { splitRows, type DiffView, type GapRow, type LineRow, type PairRow } from "../lib/rows";
 import type { ReviewActions } from "../lib/useReview";
@@ -46,6 +47,10 @@ export type FileDiffProps = {
   view?: DiffView;
   /** Changes each time the file is opened from the sidebar, which expands it. */
   openRequest?: number;
+  /** Whitespace changes are hidden, so they aren't marked within lines either. */
+  ignoreWhitespace?: boolean;
+  /** The file has changes, but only to whitespace, which are hidden. */
+  whitespaceOnly?: boolean;
 };
 
 /** Selected lines, by `posKey`, so the selection survives rows being revealed above it. */
@@ -64,6 +69,8 @@ export const FileDiff = memo(function FileDiff({
   hidden = false,
   view = "unified",
   openRequest = 0,
+  ignoreWhitespace = false,
+  whitespaceOnly = false,
 }: FileDiffProps) {
   const sectionRef = useRef<HTMLElement>(null);
   const highlighted = useHighlightedFile(sectionRef, file);
@@ -97,6 +104,7 @@ export const FileDiff = memo(function FileDiff({
     [rows, split],
   );
   const lines = useMemo(() => rowLines(rows), [rows]);
+  const changes = useMemo(() => intralineChanges(file, ignoreWhitespace), [file, ignoreWhitespace]);
   const indexOf = useMemo(
     () => new Map(lines.map((line, index) => [posKey(linePos(line)), index])),
     [lines],
@@ -211,10 +219,17 @@ export const FileDiff = memo(function FileDiff({
         ? lineTokens(highlighted.old, line.oldNo, line.content)
         : lineTokens(highlighted.new, line.newNo, line.content)
       : null;
+    const ranges = changes.get(posKey(linePos(line)));
     return (
       <>
         <span className={styles.prefix}>{PREFIX[line.type]}</span>
-        {tokens ? <Tokens tokens={tokens} /> : line.content}
+        {ranges ? (
+          <Tokens tokens={markTokens(tokens ?? [{ content: line.content }], ranges)} />
+        ) : tokens ? (
+          <Tokens tokens={tokens} />
+        ) : (
+          line.content
+        )}
       </>
     );
   };
@@ -398,7 +413,11 @@ export const FileDiff = memo(function FileDiff({
           {file.binary ? (
             <p className={styles.notice}>Binary or very large file not shown.</p>
           ) : rows.length === 0 ? (
-            <p className={styles.notice}>No content changes.</p>
+            <p className={styles.notice}>
+              {whitespaceOnly
+                ? "Only whitespace changes, which are hidden."
+                : "No content changes."}
+            </p>
           ) : (
             <table className={cx(styles.table, split && styles.split, dragging && styles.dragging)}>
               <colgroup>
@@ -500,15 +519,20 @@ function GapRowView({
   );
 }
 
-function Tokens({ tokens }: { tokens: Token[] }) {
+function Tokens({ tokens }: { tokens: MarkedToken[] }) {
   let offset = 0;
   return tokens.map((token) => {
     const start = offset;
     offset += token.content.length;
+    const Tag = token.changed ? "mark" : "span";
     return (
-      <span key={start} className="shiki-token" style={token.style}>
+      <Tag
+        key={start}
+        className={cx("shiki-token", token.changed && styles.changed)}
+        style={token.style}
+      >
         {token.content}
-      </span>
+      </Tag>
     );
   });
 }

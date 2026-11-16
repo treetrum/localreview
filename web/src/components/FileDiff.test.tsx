@@ -30,6 +30,8 @@ const withContent = { ...defaultProps.file, newContent: demoServerContent };
 
 const plus = (name: string) => screen.getByRole("button", { name: `Comment on ${name}` });
 const rowOf = (name: string) => plus(name).closest("tr") as HTMLElement;
+const marks = (name: string) =>
+  [...rowOf(name).querySelectorAll("mark")].map((mark) => mark.textContent);
 
 async function comment(user: ReturnType<typeof userEvent.setup>, body: string) {
   await user.type(screen.getByRole("textbox", { name: "Comment" }), body);
@@ -37,6 +39,22 @@ async function comment(user: ReturnType<typeof userEvent.setup>, body: string) {
 }
 
 describe("FileDiff", () => {
+  test("does mark the words that changed within modified lines", () => {
+    render(<FileDiff {...defaultProps} />);
+    expect(marks("deleted line 6")).toEqual([]);
+    expect(marks("line 6")).toEqual(["async "]);
+    expect(marks("deleted line 21")).toEqual(["old"]);
+    expect(marks("line 23")).toEqual(["new"]);
+    expect(marks("line 7")).toEqual([]);
+  });
+
+  test("does say when the only changes are hidden whitespace", () => {
+    render(
+      <FileDiff {...defaultProps} file={{ ...defaultProps.file, hunks: [] }} whitespaceOnly />,
+    );
+    expect(screen.getByText("Only whitespace changes, which are hidden.")).toBeInTheDocument();
+  });
+
   test("does anchor to the old side when commenting on a deleted line", async () => {
     const user = userEvent.setup();
     render(<FileDiff {...defaultProps} />);
