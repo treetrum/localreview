@@ -1,12 +1,17 @@
 import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
+import { gitEnv } from "./git";
 
 /** A throwaway git repository for tests. Not a test file itself. */
 export function createTestRepo() {
   const root = mkdtempSync(join(tmpdir(), "localreview-test-"));
   const run = (...args: string[]) => {
-    const result = Bun.spawnSync(["git", ...args], { cwd: root, stderr: "pipe" });
+    const result = Bun.spawnSync(["git", ...args], {
+      cwd: root,
+      env: gitEnv(),
+      stderr: "pipe",
+    });
     if (result.exitCode !== 0) throw new Error(`git ${args.join(" ")}: ${result.stderr}`);
     return result.stdout.toString().trim();
   };

@@ -235,6 +235,9 @@ localreview [options]
    - `--no-relative` and the explicit prefixes override user config (`diff.relative`,
      `diff.mnemonicPrefix`, `diff.noprefix`) that would change the output the parser expects.
    - `-M` detects renames.
+   - Every git call runs with git's repo-location variables (`git rev-parse --local-env-vars`:
+     `GIT_DIR`, `GIT_INDEX_FILE`, …) removed (`gitEnv()`), so the repo is always the one at `cwd`
+     even when launched from a git hook.
 3. **Parse** with `parseDiff` (see 5.4).
 4. **Load full file contents** for highlighting, in parallel (at most 16 at a time):
    - Old side: `git show <base>:<path>`.
@@ -836,7 +839,9 @@ bun run format     # oxfmt (write)
 
 **Git hooks** (`.githooks/`, enabled by `prepare`: `git config core.hooksPath .githooks`):
 
-- `pre-commit` runs `bun run check`.
+- `pre-commit` runs `bun run check` after unsetting git's repo-location variables. Git exports
+  them to hooks (`GIT_DIR` is set when committing from a worktree), and left set, the tests'
+  throwaway repos would run their git commands against this repo.
 - `commit-msg` enforces Conventional Commits:
   `^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\(scope\))?!?: .+`. It lets
   merge, revert and fixup/squash commits through.
