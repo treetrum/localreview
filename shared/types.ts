@@ -24,6 +24,8 @@ export type DiffFile = {
   additions: number;
   deletions: number;
   hunks: DiffHunk[];
+  /** The diff with whitespace ignored (`git diff -w`); omitted when it's the same. */
+  ignoringWhitespace?: { hunks: DiffHunk[]; additions: number; deletions: number };
   /** Full contents for highlighting; omitted if binary or too large. */
   oldContent?: string;
   newContent?: string;

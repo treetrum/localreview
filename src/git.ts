@@ -112,7 +112,7 @@ export async function loadDiff(cwd: string, request: DiffRequest = {}): Promise<
     listCommits(repo),
   ]);
 
-  const raw = await git(root, [
+  const diffArgs = (...extra: string[]) => [
     "-c",
     "core.quotePath=false",
     "diff",
@@ -122,10 +122,16 @@ export async function loadDiff(cwd: string, request: DiffRequest = {}): Promise<
     "--src-prefix=a/",
     "--dst-prefix=b/",
     "-M",
+    ...extra,
     ...resolved.diffArgs,
     "--",
+  ];
+  const [raw, rawIgnoringWhitespace] = await Promise.all([
+    git(root, diffArgs()),
+    git(root, diffArgs("-w")),
   ]);
   const files = parseDiff(raw);
+  attachIgnoringWhitespace(files, parseDiff(rawIgnoringWhitespace));
   await mapConcurrent(files, (file) => loadContents(root, resolved, file));
 
   if (resolved.includeUntracked) {
@@ -328,6 +334,19 @@ async function readRevision(repoRoot: string, spec: string): Promise<string | un
   const size = await tryGit(repoRoot, ["cat-file", "-s", spec]);
   if (size === null || Number(size) > MAX_CONTENT_BYTES) return undefined;
   return (await tryGit(repoRoot, ["show", spec])) ?? undefined;
+}
+
+/** Untracked files aren't diffed, so they never have whitespace-only changes to hide. */
+function attachIgnoringWhitespace(files: DiffFile[], ignoring: DiffFile[]) {
+  const byPath = new Map(ignoring.map((file) => [filePath(file), file]));
+  for (const file of files) {
+    if (file.binary) continue;
+    // A file with only whitespace changes has no hunks with -w, or is left out entirely.
+    const { hunks = [], additions = 0, deletions = 0 } = byPath.get(filePath(file)) ?? {};
+    if (JSON.stringify(hunks) !== JSON.stringify(file.hunks)) {
+      file.ignoringWhitespace = { hunks, additions, deletions };
+    }
+  }
 }
 
 async function untrackedFile(repoRoot: string, path: string): Promise<DiffFile> {

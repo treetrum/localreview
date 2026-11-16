@@ -86,6 +86,29 @@ describe("loadDiff", () => {
     );
   });
 
+  test("does attach the diff ignoring whitespace to files where it differs", async () => {
+    repo.write("keep.ts", "one\n  two\nTHREE\n");
+    repo.write("old-name.ts", "a\nb\nc\nd\ne\nf \n");
+    repo.write("gone.ts", "hello\n");
+
+    const diff = await loadDiff(repo.root, { target: { kind: "uncommitted" } });
+    const byPath = new Map(diff.files.map((file) => [filePath(file), file]));
+    const keep = byPath.get("keep.ts")?.ignoringWhitespace;
+    expect([keep?.additions, keep?.deletions]).toEqual([1, 1]);
+    expect(keep?.hunks.flatMap((hunk) => hunk.lines)).toEqual([
+      { type: "context", oldNo: 1, newNo: 1, content: "one" },
+      { type: "context", oldNo: 2, newNo: 2, content: "  two" },
+      { type: "del", oldNo: 3, newNo: null, content: "three" },
+      { type: "add", oldNo: null, newNo: 3, content: "THREE" },
+    ]);
+    expect(byPath.get("old-name.ts")?.ignoringWhitespace).toEqual({
+      hunks: [],
+      additions: 0,
+      deletions: 0,
+    });
+    expect(byPath.get("gone.ts")?.ignoringWhitespace).toBeUndefined();
+  });
+
   test("does detect renames and deletions", async () => {
     repo.git("mv", "old-name.ts", "new-name.ts");
     repo.git("rm", "-q", "gone.ts");

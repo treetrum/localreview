@@ -37,7 +37,6 @@ import { useDiff } from "./lib/useDiff";
 import { useDiffRequest } from "./lib/useDiffRequest";
 import { useLocalStorage } from "./lib/useLocalStorage";
 import { useReview } from "./lib/useReview";
-import { hideWhitespace } from "./lib/whitespace";
 import styles from "./App.module.css";
 
 export function App() {
@@ -135,7 +134,12 @@ function Review({ diff, error, refreshing, onRefresh, onTargetChange, onBaseChan
   );
   // Viewed marks and the copied review use the full diff, so they don't depend on the toggle.
   const shownFiles = useMemo(
-    () => (ignoreWhitespace ? files.map(hideWhitespace) : files),
+    () =>
+      ignoreWhitespace
+        ? files.map((file) =>
+            file.ignoringWhitespace ? { ...file, ...file.ignoringWhitespace } : file,
+          )
+        : files,
     [files, ignoreWhitespace],
   );
   const fingerprints = useMemo(

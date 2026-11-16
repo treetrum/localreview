@@ -355,12 +355,11 @@ Split this file
   test("does hide whitespace changes, keep viewed marks and remember the choice", async () => {
     const whitespace: DiffResponse = {
       ...demoDiff,
-      files: [
-        ...parseDiff(
-          demoDiffText.replace('+export const name = "new";', '+export  const name = "old";'),
-        ),
-        ...demoFiles.slice(-1),
-      ],
+      files: demoFiles.map((file) =>
+        file.newPath === "src/util/new.ts"
+          ? { ...file, ignoringWhitespace: { hunks: [], additions: 0, deletions: 0 } }
+          : file,
+      ),
     };
     const { user, unmount } = renderApp({ status: 200, body: whitespace });
     await ready();
