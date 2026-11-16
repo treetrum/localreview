@@ -181,6 +181,18 @@
   background: var(--diff-del-gutter);
 }
 
+/* Words that changed within a modified line. */
+.changed {
+  border-radius: 2px;
+  color: inherit;
+}
+.add .changed {
+  background: var(--diff-add-word);
+}
+.del .changed {
+  background: var(--diff-del-word);
+}
+
 .line.selected,
 .line.selected .num {
   background: var(--diff-selected-bg);

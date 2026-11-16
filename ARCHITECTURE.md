@@ -57,6 +57,8 @@ diff changed is automatically un-marked as viewed.
 | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | **Diff picker**               | Click the diff label in the header to switch: branch vs any base branch (default: `main`/`master`), uncommitted, staged, one commit, or a range (shift-click). In the URL.                                                           |
 | **Diff view**                 | **Unified** or **split** (side by side, like GitHub), toggled in the header and remembered. Hunk headers, line numbers, wrapped lines, sticky headers, highlighting.                                                                 |
+| **Word highlights**           | Within a modified line, the words that changed get a stronger highlight on top of the line's tint, like GitHub.                                                                                                                      |
+| **Hide whitespace**           | A header toggle (remembered) that hides whitespace-only changes across the diff, like `git diff -w`. Files with nothing else changed say so.                                                                                         |
 | **Expand context**            | Hunk headers carry GitHub-style expand buttons: 20 lines up or down, or all of a gap of 20 or fewer. **Expand all lines** in the file header shows the whole file.                                                                   |
 | **Line comments**             | Hover a line and click **+**. Drag across rows, or shift-click a second **+**, for a range. Comments on deleted lines are anchored to the old side.                                                                                  |
 | **File and overall comments** | **Comment on file** per file; an **Overall feedback** box for the whole change.                                                                                                                                                      |
@@ -147,6 +149,9 @@ localreview/
 │       │   ├── format.ts     # Markdown output
 │       │   ├── tree.ts       # file tree building, ordering and filtering
 │       │   ├── rows.ts       # split view: pairs old/new rows from buildRows
+│       │   ├── intraline.ts  # word-level changes within modified lines
+│       │   ├── whitespace.ts # hide whitespace: re-diff change runs ignoring whitespace
+│       │   ├── lcs.ts        # longest common subsequence used by both
 │       │   ├── filter.ts     # path matching
 │       │   ├── highlight.ts  # Shiki setup, language detection, serial queue
 │       │   ├── commits.ts    # commit-range selection (click / shift-click)
@@ -385,6 +390,7 @@ a stale link (e.g. a commit that's been rebased away) isn't a dead end.
 | Raw filter input text, debounce timer             | `FileSearch`                    | no                                               |
 | Tree vs list view                                 | `FileNav` via `useLocalStorage` | `localStorage["localreview:fileView"]`           |
 | Unified vs split diff view                        | `Review` via `useLocalStorage`  | `localStorage["localreview:diffView"]`           |
+| Hide whitespace                                   | `Review` via `useLocalStorage`  | `localStorage["localreview:hideWhitespace"]`     |
 | Comments panel open                               | `Review` via `useLocalStorage`  | `localStorage["localreview:commentsPanel"]`      |
 | Open ⇄ Resolved tab                               | `CommentsPanel`                 | no                                               |
 | Comment to scroll to after a jump                 | `Review`                        | no                                               |
@@ -448,6 +454,24 @@ In the split view a deleted line's **+** is on the left; added and context lines
 right only (so each button keeps a unique accessible name). Comments and the comment form render
 in a row below the pair, in the half their line belongs to. The view is chosen in the header and
 passed to every `FileDiff` as a prop.
+
+### 7.4.2 Word highlights and hiding whitespace
+
+**Word highlights** (`lib/intraline.ts`): within each run of changes, the nth deletion is compared
+with the nth addition (the same pairing as the split view). Both are split into words, spaces and
+punctuation, and an LCS of those tokens gives the changed character ranges, joined across
+whitespace. Pairs are skipped when either line is over 1000 characters or less than 40% of their
+non-whitespace text is shared, as highlighting most of a line adds nothing. `markTokens` splits the
+Shiki tokens (or the plain text) at the range boundaries and the changed parts render as `<mark>`.
+
+**Hide whitespace** (`lib/whitespace.ts`) is done in the UI rather than with `git diff -w`, so it
+needs no refetch, works on the static preview, and leaves fingerprints alone. Within each run of
+changes, deletions and additions that are equal once all whitespace is removed are matched by LCS
+and become context lines (new content, both line numbers). Each hunk is then rebuilt around the
+remaining changes with 3 lines of context, and dropped if none are left. `Review` applies it only
+to the files passed to `FileDiff`; fingerprints, the sidebar and **Copy review** use the full diff,
+so toggling never changes viewed state. A comment on a deleted line that becomes context shows as
+outdated while whitespace is hidden. With whitespace hidden, word highlights ignore whitespace too.
 
 ### 7.5 Expanding context (`lib/expand.ts`)
 
@@ -909,6 +933,7 @@ bun run format     # oxfmt (write)
 | 24  | **Diff target picked in the UI and kept in the URL; no CLI target arguments**                            | CLI subcommands/flags (`--staged`, `--commit`); a fixed target per server | Switching between branch, uncommitted, staged and commits doesn't need a restart, the commit list is browsable, and the URL makes any view reloadable and linkable.                 |
 | 25  | **Commit ranges by shift-click in a list of the branch's commits**                                       | Free-text from/to refs                                                    | Matches GitHub's PR commit picker; no typing or copying SHAs. The API takes any refs, so free-text could be added later.                                                            |
 | 26  | **Resolved comments are kept, not deleted, and left out of the copied review**                           | Delete on resolve; copy everything with a resolved marker                 | Resolving tracks what the agent has already addressed across rounds, so the next **Copy review** only carries outstanding feedback, and a wrongly resolved comment can be reopened. |
+| 27  | **Hide whitespace in the UI, on the full diff**                                                          | `git diff -w` on the server                                               | No refetch or extra preview snapshots, and fingerprints (viewed marks) don't change with the toggle. Matching is per run of changes, which covers re-indentation.                   |
 
 ---
 
