@@ -9,6 +9,7 @@ const actions: ReviewActions = {
   addComment: vi.fn(),
   updateComment: vi.fn(),
   deleteComment: vi.fn(),
+  setResolved: vi.fn(),
   setSummary: vi.fn(),
   setViewed: vi.fn(),
   clearViewed: vi.fn(),

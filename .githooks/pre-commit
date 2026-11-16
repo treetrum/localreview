@@ -1,2 +1,4 @@
 #!/bin/sh
+# Git exports GIT_DIR, GIT_INDEX_FILE etc. to hooks; left set, the tests' throwaway repos act on this one.
+unset $(git rev-parse --local-env-vars)
 exec bun run check

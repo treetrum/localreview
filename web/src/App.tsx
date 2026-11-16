@@ -1,5 +1,7 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { filePath, type DiffResponse, type DiffTarget } from "../../shared/types";
+import { commentElementId } from "./components/Comment";
+import { CommentsPanel } from "./components/CommentsPanel";
 import { DiffPicker } from "./components/DiffPicker";
 import { FileDiff } from "./components/FileDiff";
 import { FileNav } from "./components/FileNav";
@@ -7,6 +9,7 @@ import {
   Check,
   Columns2,
   Copy,
+  MessageSquare,
   RefreshCw,
   RotateCcw,
   Rows2,
@@ -18,7 +21,14 @@ import { Textarea } from "./components/ui/Textarea";
 import { ToggleGroup } from "./components/ui/ToggleGroup";
 import { matchesQuery } from "./lib/filter";
 import { formatReview } from "./lib/format";
-import { fileFingerprint, hasFeedback, storageKey, type ReviewComment } from "./lib/review";
+import { cx } from "./lib/cx";
+import {
+  fileFingerprint,
+  hasFeedback,
+  isResolved,
+  storageKey,
+  type ReviewComment,
+} from "./lib/review";
 import { isDiffView, type DiffView } from "./lib/rows";
 import { buildTree, filterTree, treeOrder } from "./lib/tree";
 import { useCopy } from "./lib/useCopy";
@@ -98,6 +108,11 @@ function Review({ diff, error, refreshing, onRefresh, onTargetChange, onBaseChan
   const [query, setQuery] = useState("");
   const [hideViewed, setHideViewed] = useLocalStorage("localreview:hideViewed", false, isBoolean);
   const [view, setView] = useLocalStorage<DiffView>("localreview:diffView", "unified", isDiffView);
+  const [showComments, setShowComments] = useLocalStorage(
+    "localreview:commentsPanel",
+    false,
+    isBoolean,
+  );
   const [copied, copyText] = useCopy();
   const [openRequest, setOpenRequest] = useState<{ path: string; seq: number } | null>(null);
   const openFile = useCallback(
@@ -142,10 +157,40 @@ function Review({ diff, error, refreshing, onRefresh, onTargetChange, onBaseChan
 
   const commentsByPath = useStableGroups(review.comments);
   const commentCounts = useMemo(
-    () => new Map([...commentsByPath].map(([path, list]) => [path, list.length])),
+    () =>
+      new Map(
+        [...commentsByPath].map(([path, list]) => [
+          path,
+          list.filter((c) => !isResolved(c)).length,
+        ]),
+      ),
     [commentsByPath],
   );
+  const openComments = review.comments.filter((c) => !isResolved(c)).length;
   const feedback = hasFeedback(review);
+  const paths = useMemo(() => files.map(filePath), [files]);
+
+  // Scrolls to a comment once its file has been expanded (and unhidden) by the jump.
+  const [scrollTarget, setScrollTarget] = useState<{ id: string } | null>(null);
+  useEffect(() => {
+    if (!scrollTarget) return;
+    const frame = requestAnimationFrame(() => {
+      const card = document.getElementById(commentElementId(scrollTarget.id));
+      card?.scrollIntoView?.({ block: "center" });
+      card?.focus({ preventScroll: true });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [scrollTarget]);
+
+  const jumpToComment = useCallback(
+    (comment: ReviewComment) => {
+      if (!matchesQuery(comment.path, query)) setQuery("");
+      if (hideViewed && viewedPaths.has(comment.path)) setHideViewed(false);
+      openFile(comment.path);
+      setScrollTarget({ id: comment.id });
+    },
+    [query, hideViewed, viewedPaths, setHideViewed, openFile],
+  );
 
   const copy = useCallback(
     () =>
@@ -171,7 +216,7 @@ function Review({ diff, error, refreshing, onRefresh, onTargetChange, onBaseChan
   };
 
   return (
-    <div className={styles.layout}>
+    <div className={cx(styles.layout, showComments && styles.withComments)}>
       <header className={styles.header}>
         <div className={styles.title}>
           <h1 className={styles.repo}>{diff.repoName}</h1>
@@ -220,7 +265,24 @@ function Review({ diff, error, refreshing, onRefresh, onTargetChange, onBaseChan
           >
             <RefreshCw className={refreshing ? styles.spinning : undefined} />
           </Button>
-          <Button variant="outline" size="sm" disabled={!feedback} onClick={clear}>
+          <Button
+            variant="outline"
+            size="sm"
+            className={styles.commentsToggle}
+            aria-pressed={showComments}
+            title={showComments ? "Hide the comments panel" : "Show all comments"}
+            onClick={() => setShowComments(!showComments)}
+          >
+            <MessageSquare />
+            Comments
+            {openComments > 0 && <span className={styles.count}>{openComments}</span>}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={!feedback && review.comments.length === 0}
+            onClick={clear}
+          >
             Clear
           </Button>
           <Button size="sm" disabled={!feedback} onClick={() => void copy()}>
@@ -303,6 +365,18 @@ function Review({ diff, error, refreshing, onRefresh, onTargetChange, onBaseChan
           );
         })}
       </main>
+
+      {showComments && (
+        <aside className={styles.commentsSidebar}>
+          <CommentsPanel
+            comments={review.comments}
+            paths={paths}
+            onJump={jumpToComment}
+            onResolve={actions.setResolved}
+            onClose={() => setShowComments(false)}
+          />
+        </aside>
+      )}
     </div>
   );
 }

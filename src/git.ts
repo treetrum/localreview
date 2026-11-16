@@ -20,9 +20,36 @@ export class GitError extends Error {
   override name = "GitError";
 }
 
+// From `git rev-parse --local-env-vars`: set by git for hooks, they'd override the repo found from `cwd`.
+const LOCAL_ENV_VARS = new Set([
+  "GIT_ALTERNATE_OBJECT_DIRECTORIES",
+  "GIT_CONFIG",
+  "GIT_CONFIG_PARAMETERS",
+  "GIT_CONFIG_COUNT",
+  "GIT_OBJECT_DIRECTORY",
+  "GIT_DIR",
+  "GIT_WORK_TREE",
+  "GIT_IMPLICIT_WORK_TREE",
+  "GIT_GRAFT_FILE",
+  "GIT_INDEX_FILE",
+  "GIT_NO_REPLACE_OBJECTS",
+  "GIT_REPLACE_REF_BASE",
+  "GIT_PREFIX",
+  "GIT_SHALLOW_FILE",
+  "GIT_COMMON_DIR",
+]);
+
+/** The environment without git's repo-location variables, so git always uses the repo at `cwd`. */
+export function gitEnv(): Record<string, string | undefined> {
+  return Object.fromEntries(
+    Object.entries(process.env).filter(([name]) => !LOCAL_ENV_VARS.has(name)),
+  );
+}
+
 export async function git(cwd: string, args: string[]): Promise<string> {
   const proc = Bun.spawn(["git", ...args], {
     cwd,
+    env: gitEnv(),
     stdin: "ignore",
     stdout: "pipe",
     stderr: "pipe",

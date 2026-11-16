@@ -267,6 +267,30 @@ describe("loadDiff", () => {
     expect(diff.files[0]?.newContent).toBeUndefined();
   });
 
+  test("does use the repo at cwd and leave others alone when run from a git hook", async () => {
+    const other = createTestRepo();
+    other.commit("other");
+    const head = other.git("rev-parse", "HEAD");
+    const saved = { GIT_DIR: process.env.GIT_DIR, GIT_INDEX_FILE: process.env.GIT_INDEX_FILE };
+    process.env.GIT_DIR = `${other.root}/.git`;
+    process.env.GIT_INDEX_FILE = `${other.root}/.git/index`;
+    try {
+      const scratch = createTestRepo();
+      scratch.commit("scratch");
+      scratch.remove();
+      repo.write("fresh.ts", "x\n");
+      const diff = await loadDiff(repo.root, { target: { kind: "uncommitted" } });
+      expect(summary(diff.files)).toEqual([["fresh.ts", "untracked"]]);
+    } finally {
+      for (const [name, value] of Object.entries(saved)) {
+        if (value === undefined) delete process.env[name];
+        else process.env[name] = value;
+      }
+    }
+    expect(other.git("rev-parse", "HEAD")).toBe(head);
+    other.remove();
+  });
+
   test("does report the repo root when started in a subdirectory", async () => {
     repo.write("sub/file.ts", "x\n");
     const diff = await loadDiff(`${repo.root}/sub`, { target: { kind: "branch" } });

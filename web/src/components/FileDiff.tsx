@@ -181,6 +181,7 @@ export const FileDiff = memo(function FileDiff({
         outdated={isOutdated}
         onUpdate={actions.updateComment}
         onDelete={actions.deleteComment}
+        onResolve={actions.setResolved}
       />
     ));
 

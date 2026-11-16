@@ -105,6 +105,31 @@ test("scrolls a file into view when its sidebar link is clicked", async ({ page 
   await expect(page).toHaveURL(/#file-3$/);
 });
 
+test("scrolls to a comment from the comments panel and resolves it", async ({ page }) => {
+  const readme = section(page, "README.md");
+  await readme.getByRole("button", { name: "Comment on file" }).click();
+  await readme.getByRole("textbox", { name: "Comment" }).fill("Mention the setup");
+  await readme.getByRole("button", { name: "Comment", exact: true }).click();
+  await page.evaluate(() => window.scrollTo(0, 0));
+  const card = readme.getByRole("article", { name: "Comment" });
+  await expect(card).not.toBeInViewport();
+
+  await page.getByRole("button", { name: "Comments 1" }).click();
+  const panel = page.getByRole("region", { name: "Comments" });
+  await panel.getByRole("button", { name: "Go to comment: File comment in README.md" }).click();
+  await expect(card).toBeInViewport();
+  await expect(card).toBeFocused();
+
+  await panel.getByRole("button", { name: "Resolve comment: File comment" }).click();
+  await expect(panel.getByText("All comments are resolved.")).toBeVisible();
+  await expect(card.getByText("Resolved")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Copy review" })).toBeDisabled();
+
+  await page.reload();
+  await expect(page.getByRole("region", { name: "Comments" })).toBeVisible();
+  await expect(section(page, "README.md").getByText("Resolved")).toBeVisible();
+});
+
 test("shows a tooltip below a file list toolbar button when hovering it", async ({ page }) => {
   const button = nav(page).getByRole("button", { name: "Hide viewed files" });
   await button.hover();

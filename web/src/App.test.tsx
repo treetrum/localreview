@@ -285,6 +285,52 @@ Split this file
     expect(within(navLink(/server\.ts/)).getByLabelText("2 comments")).toBeInTheDocument();
   });
 
+  test("does list comments in the panel and resolve them out of the copied review", async () => {
+    const { user } = renderApp();
+    await ready();
+    const server = section("src/server.ts");
+    await user.click(within(server).getByRole("button", { name: "Comment on line 6" }));
+    await user.type(within(server).getByRole("textbox", { name: "Comment" }), "Why async?");
+    await user.keyboard("{Meta>}{Enter}{/Meta}");
+
+    await user.click(screen.getByRole("button", { name: "Comments 1" }));
+    const panel = screen.getByRole("region", { name: "Comments" });
+    expect(within(panel).getByText("Why async?")).toBeInTheDocument();
+
+    await user.click(within(panel).getByRole("button", { name: "Resolve comment: Line 6" }));
+    expect(within(panel).getByText("All comments are resolved.")).toBeInTheDocument();
+    expect(within(server).getByText("Resolved")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Copy review" })).toBeDisabled();
+    expect(within(navLink(/server\.ts/)).queryByLabelText("1 comment")).not.toBeInTheDocument();
+
+    await user.click(within(server).getByRole("button", { name: "Reopen comment" }));
+    expect(within(panel).getByText("Why async?")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Copy review" })).toBeEnabled();
+  });
+
+  test("does reveal and focus a comment's hidden file when jumping to it from the panel", async () => {
+    const { user } = renderApp();
+    await ready();
+    const server = section("src/server.ts");
+    await user.click(within(server).getByRole("button", { name: "Comment on file" }));
+    await user.type(within(server).getByRole("textbox", { name: "Comment" }), "Split this");
+    await user.keyboard("{Meta>}{Enter}{/Meta}");
+    await user.click(within(server).getByRole("checkbox", { name: "Viewed" }));
+    await user.click(screen.getByRole("button", { name: "Hide viewed files" }));
+    expect(screen.queryByRole("region", { name: "src/server.ts" })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Comments 1" }));
+    await user.click(
+      screen.getByRole("button", { name: "Go to comment: File comment in src/server.ts" }),
+    );
+    const card = within(section("src/server.ts")).getByRole("article", { name: "Comment" });
+    await waitFor(() => expect(card).toHaveFocus());
+    expect(screen.getByRole("button", { name: "Hide viewed files" })).toHaveAttribute(
+      "aria-pressed",
+      "false",
+    );
+  });
+
   test("does clear feedback only after confirming", async () => {
     const confirm = vi.fn().mockReturnValueOnce(false).mockReturnValueOnce(true);
     vi.stubGlobal("confirm", confirm);

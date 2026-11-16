@@ -13,9 +13,11 @@ export type ReviewComment = {
   snippet: SnippetLine[];
   body: string;
   createdAt: number;
+  /** Set once the comment has been dealt with; resolved comments are left out of the copied review. */
+  resolvedAt?: number;
 };
 
-export type NewComment = Omit<ReviewComment, "id" | "createdAt">;
+export type NewComment = Omit<ReviewComment, "id" | "createdAt" | "resolvedAt">;
 
 export type ReviewState = {
   summary: string;
@@ -49,8 +51,14 @@ export function rangeLabel(range: LineRange): string {
   return `Lines ${start.line}–${end.line}${deleted}`;
 }
 
+export const isResolved = (comment: ReviewComment): boolean => comment.resolvedAt !== undefined;
+
+/** Whether there's anything to copy: a summary or an open, non-blank comment. */
 export function hasFeedback(review: Pick<ReviewState, "summary" | "comments">): boolean {
-  return review.summary.trim() !== "" || review.comments.some((c) => c.body.trim() !== "");
+  return (
+    review.summary.trim() !== "" ||
+    review.comments.some((c) => !isResolved(c) && c.body.trim() !== "")
+  );
 }
 
 /** A fast FNV-1a hash over everything that makes up a file's diff. */

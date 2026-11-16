@@ -36,6 +36,23 @@
   white-space: normal;
 }
 
+.card:focus {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+.resolved {
+  background: var(--muted);
+}
+
+/* Resolved comments shrink to one line so they don't crowd the diff. */
+.resolved .body {
+  overflow: hidden;
+  color: var(--muted-foreground);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .header {
   display: flex;
   align-items: center;

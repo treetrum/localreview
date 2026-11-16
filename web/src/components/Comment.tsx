@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { formatComment } from "../lib/format";
-import { rangeLabel, type ReviewComment } from "../lib/review";
+import { cx } from "../lib/cx";
+import { isResolved, rangeLabel, type ReviewComment } from "../lib/review";
 import { useCopy } from "../lib/useCopy";
-import { Check, Copy, Pencil, Trash } from "./icons";
+import { Check, CircleCheck, Copy, Pencil, RotateCcw, Trash } from "./icons";
 import { Badge } from "./ui/Badge";
 import { Button } from "./ui/Button";
 import { Textarea } from "./ui/Textarea";
@@ -72,9 +73,19 @@ export type CommentCardProps = {
   outdated?: boolean;
   onUpdate: (id: string, body: string) => void;
   onDelete: (id: string) => void;
+  onResolve: (id: string, resolved: boolean) => void;
 };
 
-export function CommentCard({ comment, outdated = false, onUpdate, onDelete }: CommentCardProps) {
+/** DOM id of a comment's card, so the comments panel can scroll to it. */
+export const commentElementId = (id: string) => `comment-${id}`;
+
+export function CommentCard({
+  comment,
+  outdated = false,
+  onUpdate,
+  onDelete,
+  onResolve,
+}: CommentCardProps) {
   const [editing, setEditing] = useState(false);
   const [copied, copy] = useCopy();
 
@@ -92,30 +103,60 @@ export function CommentCard({ comment, outdated = false, onUpdate, onDelete }: C
     );
   }
 
+  const resolved = isResolved(comment);
   return (
-    <article className={styles.card} aria-label="Comment">
+    <article
+      id={commentElementId(comment.id)}
+      tabIndex={-1}
+      className={cx(styles.card, resolved && styles.resolved)}
+      aria-label="Comment"
+    >
       <header className={styles.header}>
         <span>{comment.range ? rangeLabel(comment.range) : "File comment"}</span>
         {outdated && <Badge className={styles.outdated}>Outdated</Badge>}
+        {resolved && <Badge variant="outline">Resolved</Badge>}
         <span className={styles.tools}>
-          <Button
-            variant="ghost"
-            size="icon-xs"
-            aria-label={copied ? "Copied comment" : "Copy comment"}
-            title="Copy this comment as feedback"
-            onClick={() => void copy(formatComment(comment, outdated))}
-          >
-            {copied ? <Check size={14} /> : <Copy size={14} />}
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon-xs"
-            aria-label="Edit comment"
-            title="Edit"
-            onClick={() => setEditing(true)}
-          >
-            <Pencil size={14} />
-          </Button>
+          {resolved ? (
+            <Button
+              variant="ghost"
+              size="icon-xs"
+              aria-label="Reopen comment"
+              title="Reopen"
+              onClick={() => onResolve(comment.id, false)}
+            >
+              <RotateCcw size={14} />
+            </Button>
+          ) : (
+            <>
+              <Button
+                variant="ghost"
+                size="icon-xs"
+                aria-label={copied ? "Copied comment" : "Copy comment"}
+                title="Copy this comment as feedback"
+                onClick={() => void copy(formatComment(comment, outdated))}
+              >
+                {copied ? <Check size={14} /> : <Copy size={14} />}
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon-xs"
+                aria-label="Resolve comment"
+                title="Resolve"
+                onClick={() => onResolve(comment.id, true)}
+              >
+                <CircleCheck size={14} />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon-xs"
+                aria-label="Edit comment"
+                title="Edit"
+                onClick={() => setEditing(true)}
+              >
+                <Pencil size={14} />
+              </Button>
+            </>
+          )}
           <Button
             variant="ghost"
             size="icon-xs"
@@ -127,17 +168,16 @@ export function CommentCard({ comment, outdated = false, onUpdate, onDelete }: C
           </Button>
         </span>
       </header>
-      {outdated && comment.snippet.length > 0 && (
-        <pre className={styles.snippet}>
-          {comment.snippet
-            .map(
-              (line) =>
-                (line.type === "add" ? "+" : line.type === "del" ? "-" : " ") + line.content,
-            )
-            .join("\n")}
-        </pre>
+      {outdated && !resolved && comment.snippet.length > 0 && (
+        <pre className={styles.snippet}>{snippetText(comment)}</pre>
       )}
       <p className={styles.body}>{comment.body}</p>
     </article>
   );
+}
+
+export function snippetText(comment: Pick<ReviewComment, "snippet">): string {
+  return comment.snippet
+    .map((line) => (line.type === "add" ? "+" : line.type === "del" ? "-" : " ") + line.content)
+    .join("\n");
 }

@@ -157,6 +157,17 @@ Extract the routing.
     expect(markdown).toContain("`````diff\n const s = ````;\n`````");
   });
 
+  test("does leave out resolved comments", () => {
+    const markdown = formatReview({
+      label: "x",
+      files,
+      summary: "",
+      comments: [comment({ body: "Done already", resolvedAt: 2 }), comment({ id: "c2" })],
+    });
+    expect(markdown).not.toContain("Done already");
+    expect(markdown).toContain("src/server.ts");
+  });
+
   test("does skip blank comments and a blank summary", () => {
     const markdown = formatReview({
       label: "x",
