@@ -5,6 +5,7 @@ export type ReviewActions = {
   addComment: (comment: NewComment) => void;
   updateComment: (id: string, body: string) => void;
   deleteComment: (id: string) => void;
+  setResolved: (id: string, resolved: boolean) => void;
   setSummary: (summary: string) => void;
   setViewed: (path: string, fingerprint: string | null) => void;
   clearViewed: () => void;
@@ -55,6 +56,13 @@ export function useReview(storageKey: string): { review: ReviewState; actions: R
         })),
       deleteComment: (id) =>
         setReview((r) => ({ ...r, comments: r.comments.filter((c) => c.id !== id) })),
+      setResolved: (id, resolved) =>
+        setReview((r) => ({
+          ...r,
+          comments: r.comments.map((c) =>
+            c.id === id ? { ...c, resolvedAt: resolved ? Date.now() : undefined } : c,
+          ),
+        })),
       setSummary: (summary) => setReview((r) => ({ ...r, summary })),
       setViewed: (path, fingerprint) =>
         setReview((r) => {

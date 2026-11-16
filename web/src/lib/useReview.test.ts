@@ -55,6 +55,20 @@ describe("useReview", () => {
     expect(result.current.review.comments).toEqual([second]);
   });
 
+  test("does resolve and reopen a comment by id", () => {
+    const { result } = renderHook(() => useReview(KEY));
+    act(() => result.current.actions.addComment(newComment));
+    const id = result.current.review.comments[0]?.id ?? "";
+
+    act(() => result.current.actions.setResolved(id, true));
+    expect(result.current.review.comments[0]?.resolvedAt).toEqual(expect.any(Number));
+    expect(saved().comments[0].resolvedAt).toEqual(expect.any(Number));
+
+    act(() => result.current.actions.setResolved(id, false));
+    expect(result.current.review.comments[0]?.resolvedAt).toBeUndefined();
+    expect(saved().comments[0]).not.toHaveProperty("resolvedAt");
+  });
+
   test("does set and unset viewed fingerprints", () => {
     const { result } = renderHook(() => useReview(KEY));
     act(() => result.current.actions.setViewed("a.ts", "fp1"));

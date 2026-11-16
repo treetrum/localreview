@@ -37,7 +37,12 @@ describe("CommentForm", () => {
 });
 
 describe("CommentCard", () => {
-  const defaultProps = { comment: mockComment, onUpdate: vi.fn(), onDelete: vi.fn() };
+  const defaultProps = {
+    comment: mockComment,
+    onUpdate: vi.fn(),
+    onDelete: vi.fn(),
+    onResolve: vi.fn(),
+  };
 
   test("does save an edited body when editing", async () => {
     const user = userEvent.setup();
@@ -70,6 +75,24 @@ describe("CommentCard", () => {
     render(<CommentCard {...defaultProps} />);
     await user.click(screen.getByRole("button", { name: "Delete comment" }));
     expect(defaultProps.onDelete).toHaveBeenCalledWith("c1");
+  });
+
+  test("does resolve the comment by id", async () => {
+    const user = userEvent.setup();
+    render(<CommentCard {...defaultProps} />);
+    await user.click(screen.getByRole("button", { name: "Resolve comment" }));
+    expect(defaultProps.onResolve).toHaveBeenCalledWith("c1", true);
+  });
+
+  test("does offer only reopen and delete when the comment is resolved", async () => {
+    const user = userEvent.setup();
+    render(<CommentCard {...defaultProps} comment={{ ...mockComment, resolvedAt: 2 }} />);
+    expect(screen.getByText("Resolved")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Edit comment" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Copy comment" })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Reopen comment" }));
+    expect(defaultProps.onResolve).toHaveBeenCalledWith("c1", false);
   });
 
   test("does copy just this comment as Markdown feedback", async () => {

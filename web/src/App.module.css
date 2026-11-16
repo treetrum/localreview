@@ -5,6 +5,10 @@
   min-height: 100vh;
 }
 
+.withComments {
+  grid-template-columns: var(--sidebar-width) minmax(0, 1fr) var(--comments-width);
+}
+
 .header {
   position: sticky;
   top: 0;
@@ -72,6 +76,36 @@
   flex: 1;
 }
 
+.commentsSidebar {
+  position: sticky;
+  top: var(--header-height);
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - var(--header-height));
+  border-left-width: 1px;
+}
+
+.commentsSidebar > section {
+  flex: 1;
+}
+
+.count {
+  min-width: 1.125rem;
+  padding: 0 0.3rem;
+  border-radius: 999px;
+  background: var(--primary);
+  color: var(--primary-foreground);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  line-height: 1.125rem;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.commentsToggle[aria-pressed="true"] {
+  background: var(--accent);
+}
+
 .main {
   display: flex;
   flex-direction: column;
@@ -136,12 +170,25 @@
   font-size: 0.8125rem;
 }
 
+/* Too narrow for both sidebars: the comments panel takes the file list's place. */
+@media (max-width: 1100px) {
+  .withComments {
+    grid-template-columns: minmax(0, 1fr) var(--comments-width);
+  }
+
+  .withComments .sidebar {
+    display: none;
+  }
+}
+
 @media (max-width: 760px) {
-  .layout {
+  .layout,
+  .withComments {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .sidebar {
+  .sidebar,
+  .commentsSidebar {
     display: none;
   }
 

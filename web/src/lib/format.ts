@@ -1,6 +1,13 @@
 import { filePath, type DiffFile } from "../../../shared/types";
 import { buildRows, commentSpans, rowLines } from "./expand";
-import { linePos, posKey, rangeLabel, type ReviewComment, type SnippetLine } from "./review";
+import {
+  isResolved,
+  linePos,
+  posKey,
+  rangeLabel,
+  type ReviewComment,
+  type SnippetLine,
+} from "./review";
 
 export type FormatInput = {
   label: string;
@@ -19,7 +26,7 @@ export function formatReview({ label, files, summary, comments }: FormatInput): 
 
   const byPath = new Map<string, ReviewComment[]>();
   for (const comment of comments) {
-    if (!comment.body.trim()) continue;
+    if (!comment.body.trim() || isResolved(comment)) continue;
     byPath.set(comment.path, [...(byPath.get(comment.path) ?? []), comment]);
   }
 

@@ -55,13 +55,16 @@ In the browser:
   in the file header to show the whole file. Expanded lines can be commented on too.
 - **Comment on file** for file-level feedback; **Overall feedback** for the whole change.
 - ⌘/Ctrl+↵ submits a comment, Esc cancels.
+- **Comments** in the header opens a panel listing every open comment with its file, line and
+  snippet. Click one to jump to it; **Resolve** a comment once the agent has dealt with it.
+  Resolved comments stay (and can be reopened) but are left out of **Copy review**.
 - Tick **Viewed** to collapse a file. If the file's diff changes later, it's un-marked
   automatically.
 - Switch between a **unified** and a **split** (side-by-side) diff with the toggle in the header.
   The choice is remembered.
 - `/` focuses the file filter; Esc clears it.
 - **Refresh** reloads the diff from git after the agent edits files. Comments are kept.
-- **Copy review** copies all feedback as Markdown. **Clear** removes feedback but keeps viewed
+- **Copy review** copies all open feedback as Markdown. **Clear** removes feedback but keeps viewed
   marks.
 
 Review state is stored in the browser's `localStorage`, per repository and diff target.

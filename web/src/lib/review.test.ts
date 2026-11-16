@@ -73,4 +73,8 @@ describe("hasFeedback", () => {
     expect(hasFeedback({ summary: "ok", comments: [] })).toBe(true);
     expect(hasFeedback({ summary: "", comments: [mockComment] })).toBe(true);
   });
+
+  test("does ignore resolved comments", () => {
+    expect(hasFeedback({ summary: "", comments: [{ ...mockComment, resolvedAt: 2 }] })).toBe(false);
+  });
 });
