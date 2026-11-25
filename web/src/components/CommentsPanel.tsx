@@ -1,5 +1,5 @@
 import { memo, useMemo, useState } from "react";
-import { groupComments } from "../lib/comments";
+import { dedent, groupComments } from "../lib/comments";
 import { isResolved, rangeLabel, type ReviewComment } from "../lib/review";
 import { snippetText } from "./Comment";
 import { CircleCheck, RotateCcw, X } from "./icons";
@@ -122,7 +122,7 @@ function PanelItem({
 }) {
   const location = comment.range ? rangeLabel(comment.range) : "File comment";
   const resolved = isResolved(comment);
-  const snippet = snippetText({ snippet: comment.snippet.slice(-CONTEXT_LINES) });
+  const snippet = snippetText({ snippet: dedent(comment.snippet.slice(-CONTEXT_LINES)) });
   return (
     <li className={styles.item}>
       <button

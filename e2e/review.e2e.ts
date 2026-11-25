@@ -192,6 +192,24 @@ test("resizes the comments panel by dragging its left edge and keeps the width a
   await expect.poll(async () => (await panel.boundingBox())!.width).toBeCloseTo(before + 80, 0);
 });
 
+test("fits comments with long snippets inside the comments panel", async ({ page, repo }) => {
+  repo.write("README.md", `# Demo\n\n        ${"word ".repeat(80)}end\n`);
+  await page.getByRole("button", { name: "Refresh" }).click();
+  const readme = section(page, "README.md");
+  await expect(readme.getByText(/word word/)).toBeVisible();
+  await readme.getByRole("button", { name: "Comment on line 3", exact: true }).click();
+  await readme.getByRole("textbox", { name: "Comment" }).fill("Too long");
+  await readme.getByRole("button", { name: "Comment", exact: true }).click();
+
+  await page.getByRole("button", { name: /^Comments/ }).click();
+  const panel = page.getByRole("region", { name: "Comments" });
+  const item = panel.getByRole("button", { name: "Go to comment: Line 3 in README.md" });
+  await expect(item).toHaveText(/\+word word/);
+  const [panelBox, itemBox] = await Promise.all([panel.boundingBox(), item.boundingBox()]);
+  expect(itemBox!.x + itemBox!.width).toBeLessThanOrEqual(panelBox!.x + panelBox!.width);
+  await expect(panel.getByRole("button", { name: "Resolve comment: Line 3" })).toBeInViewport();
+});
+
 test("keeps comments and viewed state after a reload", async ({ page }) => {
   const readme = section(page, "README.md");
   await readme.getByRole("button", { name: "Comment on file" }).click();
