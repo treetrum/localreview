@@ -8,8 +8,10 @@ import {
   ChevronDown,
   ChevronRight,
   CircleCheck,
+  Eye,
   EyeOff,
   FlaskConical,
+  FlaskConicalOff,
   Folder,
   FolderOpen,
   List,
@@ -97,7 +99,7 @@ export const FileNav = memo(function FileNav({
           aria-pressed={hideViewed}
           onClick={() => onHideViewedChange(!hideViewed)}
         >
-          <EyeOff />
+          {hideViewed ? <EyeOff /> : <Eye />}
         </Button>
         {hideViewedTip.tooltip}
         <Button
@@ -109,7 +111,7 @@ export const FileNav = memo(function FileNav({
           aria-pressed={hideTests}
           onClick={() => onHideTestsChange(!hideTests)}
         >
-          <FlaskConical />
+          {hideTests ? <FlaskConicalOff /> : <FlaskConical />}
         </Button>
         {hideTestsTip.tooltip}
         <ToggleGroup
