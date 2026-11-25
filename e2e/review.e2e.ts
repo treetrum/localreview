@@ -142,6 +142,56 @@ test("shows a tooltip below a file list toolbar button when hovering it", async 
   await expect(tooltip).toBeHidden();
 });
 
+test("scrolls long lines sideways instead of wrapping them", async ({ page, repo }) => {
+  repo.write("README.md", `# Demo\n\n${"word ".repeat(200)}end\n`);
+  await page.getByRole("button", { name: "Refresh" }).click();
+  const line = section(page, "README.md").getByRole("cell", { name: /word word/ });
+  await expect(line).toBeVisible();
+  expect((await line.boundingBox())!.height).toBeLessThanOrEqual(24);
+
+  const scroller = section(page, "README.md").locator("table").locator("..");
+  const scrollable = await scroller.evaluate((el) => el.scrollWidth > el.clientWidth);
+  expect(scrollable).toBe(true);
+  await expect(page.locator("html")).toHaveJSProperty("scrollWidth", page.viewportSize()!.width);
+});
+
+test("resizes the file list by dragging its edge and keeps the width after a reload", async ({
+  page,
+}) => {
+  const sidebar = page.getByRole("complementary").filter({ has: nav(page) });
+  const handle = page.getByRole("separator", { name: "Resize file list" });
+  const before = (await sidebar.boundingBox())!.width;
+  const box = (await handle.boundingBox())!;
+  await page.mouse.move(box.x + box.width / 2, box.y + 100);
+  await page.mouse.down();
+  await page.mouse.move(box.x + box.width / 2 + 120, box.y + 100, { steps: 5 });
+  await page.mouse.up();
+  await expect.poll(async () => (await sidebar.boundingBox())!.width).toBeCloseTo(before + 120, 0);
+
+  await page.reload();
+  await expect.poll(async () => (await sidebar.boundingBox())!.width).toBeCloseTo(before + 120, 0);
+});
+
+test("resizes the comments panel by dragging its left edge and keeps the width after a reload", async ({
+  page,
+}) => {
+  await page.getByRole("button", { name: "Comments" }).click();
+  const panel = page.getByRole("complementary").filter({
+    has: page.getByRole("region", { name: "Comments" }),
+  });
+  const handle = page.getByRole("separator", { name: "Resize comments panel" });
+  const before = (await panel.boundingBox())!.width;
+  const box = (await handle.boundingBox())!;
+  await page.mouse.move(box.x + box.width / 2, box.y + 100);
+  await page.mouse.down();
+  await page.mouse.move(box.x + box.width / 2 - 80, box.y + 100, { steps: 5 });
+  await page.mouse.up();
+  await expect.poll(async () => (await panel.boundingBox())!.width).toBeCloseTo(before + 80, 0);
+
+  await page.reload();
+  await expect.poll(async () => (await panel.boundingBox())!.width).toBeCloseTo(before + 80, 0);
+});
+
 test("keeps comments and viewed state after a reload", async ({ page }) => {
   const readme = section(page, "README.md");
   await readme.getByRole("button", { name: "Comment on file" }).click();

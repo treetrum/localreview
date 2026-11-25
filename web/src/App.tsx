@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type CSSProperties } from "react";
 import { filePath, type DiffResponse, type DiffTarget } from "../../shared/types";
 import { commentElementId } from "./components/Comment";
 import { CommentsPanel } from "./components/CommentsPanel";
@@ -18,6 +18,7 @@ import {
 } from "./components/icons";
 import { Button } from "./components/ui/Button";
 import { Progress } from "./components/ui/Progress";
+import { ResizeHandle } from "./components/ui/ResizeHandle";
 import { Textarea } from "./components/ui/Textarea";
 import { ToggleGroup } from "./components/ui/ToggleGroup";
 import { matchesQuery } from "./lib/filter";
@@ -95,6 +96,14 @@ export function App() {
 
 const EMPTY_COMMENTS: ReviewComment[] = [];
 const isBoolean = (value: unknown): value is boolean => typeof value === "boolean";
+const isNumber = (value: unknown): value is number => typeof value === "number";
+
+const SIDEBAR = { default: 288, min: 192, max: 640 };
+const COMMENTS = { default: 320, min: 240, max: 640 };
+/** Room always left for the diff when sizing the side panels. */
+const MIN_MAIN = 480;
+/** Matches the media query below which the comments panel replaces the file list. */
+const ONE_PANEL_BELOW = 1100;
 
 type ReviewProps = {
   diff: DiffResponse;
@@ -121,6 +130,22 @@ function Review({ diff, error, refreshing, onRefresh, onTargetChange, onBaseChan
     false,
     isBoolean,
   );
+  const [sidebarWidth, setSidebarWidth] = useLocalStorage(
+    "localreview:sidebarWidth",
+    SIDEBAR.default,
+    isNumber,
+  );
+  const [commentsWidth, setCommentsWidth] = useLocalStorage(
+    "localreview:commentsWidth",
+    COMMENTS.default,
+    isNumber,
+  );
+  const windowWidth = useWindowWidth();
+  const bothPanels = showComments && windowWidth > ONE_PANEL_BELOW;
+  const maxSidebar = panelMax(SIDEBAR, windowWidth - (bothPanels ? commentsWidth : 0));
+  const sidebar = clamp(sidebarWidth, SIDEBAR.min, maxSidebar);
+  const maxComments = panelMax(COMMENTS, windowWidth - (bothPanels ? sidebar : 0));
+  const comments = clamp(commentsWidth, COMMENTS.min, maxComments);
   const [copied, copyText] = useCopy();
   const [openRequest, setOpenRequest] = useState<{ path: string; seq: number } | null>(null);
   const openFile = useCallback(
@@ -239,7 +264,12 @@ function Review({ diff, error, refreshing, onRefresh, onTargetChange, onBaseChan
   };
 
   return (
-    <div className={cx(styles.layout, showComments && styles.withComments)}>
+    <div
+      className={cx(styles.layout, showComments && styles.withComments)}
+      style={
+        { "--sidebar-width": `${sidebar}px`, "--comments-width": `${comments}px` } as CSSProperties
+      }
+    >
       <header className={styles.header}>
         <div className={styles.title}>
           <h1 className={styles.repo}>{diff.repoName}</h1>
@@ -342,6 +372,14 @@ function Review({ diff, error, refreshing, onRefresh, onTargetChange, onBaseChan
           commentCounts={commentCounts}
           onFileOpen={openFile}
         />
+        <ResizeHandle
+          label="Resize file list"
+          value={sidebar}
+          min={SIDEBAR.min}
+          max={maxSidebar}
+          defaultValue={SIDEBAR.default}
+          onChange={setSidebarWidth}
+        />
       </aside>
 
       <main className={styles.main}>
@@ -420,10 +458,35 @@ function Review({ diff, error, refreshing, onRefresh, onTargetChange, onBaseChan
             onResolve={actions.setResolved}
             onClose={() => setShowComments(false)}
           />
+          <ResizeHandle
+            label="Resize comments panel"
+            edge="left"
+            value={comments}
+            min={COMMENTS.min}
+            max={maxComments}
+            defaultValue={COMMENTS.default}
+            onChange={setCommentsWidth}
+          />
         </aside>
       )}
     </div>
   );
+}
+
+const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
+
+/** The widest a side panel may be, leaving `MIN_MAIN` for the diff out of `available` pixels. */
+const panelMax = (limits: { min: number; max: number }, available: number) =>
+  clamp(available - MIN_MAIN, limits.min, limits.max);
+
+function useWindowWidth() {
+  const [width, setWidth] = useState(() => window.innerWidth);
+  useEffect(() => {
+    const onResize = () => setWidth(window.innerWidth);
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+  return width;
 }
 
 /** Groups comments by path, reusing the previous array for paths whose comments didn't change. */

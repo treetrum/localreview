@@ -1,0 +1,40 @@
+.handle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  z-index: 5;
+  width: 8px;
+  cursor: col-resize;
+  touch-action: none;
+}
+
+.right {
+  right: -4px;
+}
+
+.left {
+  left: -4px;
+}
+
+.handle::after {
+  content: "";
+  position: absolute;
+  inset: 0 3px;
+  transition: background 0.1s;
+}
+
+.handle:hover::after,
+.handle:focus-visible::after,
+.dragging::after {
+  background: var(--ring);
+}
+
+.handle:focus-visible {
+  outline: none;
+}
+
+/* Keep the col-resize cursor and stop text selection while dragging. */
+:global(body:has(.dragging)) {
+  cursor: col-resize;
+  user-select: none;
+}

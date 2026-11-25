@@ -35,6 +35,12 @@
   },
   "overrides": [
     {
+      "files": ["web/src/components/ui/ResizeHandle.tsx"],
+      "rules": {
+        "jsx-a11y/prefer-tag-over-role": "off"
+      }
+    },
+    {
       "files": ["e2e/**"],
       "rules": {
         "no-empty-pattern": "off"
