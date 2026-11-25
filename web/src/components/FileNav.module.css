@@ -63,11 +63,11 @@
   color: var(--foreground);
 }
 
-.hideViewed {
+.filterToggle {
   color: var(--muted-foreground);
 }
 
-.hideViewed[aria-pressed="true"] {
+.filterToggle[aria-pressed="true"] {
   background: var(--accent);
   color: var(--foreground);
 }

@@ -73,6 +73,7 @@ diff changed is automatically un-marked as viewed.
 | **File navigation**           | Sidebar with **tree** view (collapsible folders, single-child chains compressed like `src/components`) or **list** view (filename + directory). The choice is remembered. Clicking a file scrolls to it and expands it if collapsed. |
 | **Filter**                    | Path search (case-insensitive; space-separated terms must all match) that narrows both the sidebar and the diff. Debounced; `/` focuses it, Esc clears it.                                                                           |
 | **Hide viewed files**         | A sidebar toggle that hides viewed files from both the sidebar and the diff, so only what's left to review shows. Remembered across reloads.                                                                                         |
+| **Hide test files**           | A sidebar toggle that hides test and test support files (specs, `__tests__`, mocks, fixtures, snapshots, test config) from the sidebar and diff. Remembered across reloads.                                                          |
 | **Refresh**                   | Reloads the diff from git without restarting.                                                                                                                                                                                        |
 
 ---
@@ -95,7 +96,7 @@ diff changed is automatically un-marked as viewed.
 ┌────────────────────┴──────────── Browser (React 19 SPA) ─────────────────────────────────┐
 │  App ─► useDiff (fetch) ─► Review                                                         │
 │                              ├── header: progress, view, refresh, Comments, Clear, Copy   │
-│                              ├── FileNav: filter, hide viewed, tree/list                 │
+│                              ├── FileNav: filter, hide viewed/tests, tree/list           │
 │                              ├── FileDiff × N: lines, selection, comments, Viewed         │
 │                              └── CommentsPanel: open/resolved comments, jump, resolve     │
 │  State: useReview ⇄ localStorage     Highlighting: Shiki (lazy, per file)                 │
@@ -361,6 +362,7 @@ App                              diff request (URL), load states (loading / erro
     ├── FileNav                  sidebar
     │   ├── FileSearch           owns raw input text + debounce timer
     │   ├── Hide viewed files    toggle (state owned by Review)
+    │   ├── Hide test files      toggle (state owned by Review)
     │   ├── ToggleGroup          tree ⇄ list (persisted)
     │   └── Tree / list → FileRow
     ├── main
@@ -388,6 +390,7 @@ a stale link (e.g. a commit that's been rebased away) isn't a dead end.
 | Comments, summary, viewed marks                   | `useReview` (in `Review`)       | `localStorage["localreview:<repoRoot>:<label>"]` |
 | Applied filter query                              | `Review`                        | no                                               |
 | Hide viewed files                                 | `Review` via `useLocalStorage`  | `localStorage["localreview:hideViewed"]`         |
+| Hide test files                                   | `Review` via `useLocalStorage`  | `localStorage["localreview:hideTests"]`          |
 | Raw filter input text, debounce timer             | `FileSearch`                    | no                                               |
 | Tree vs list view                                 | `FileNav` via `useLocalStorage` | `localStorage["localreview:fileView"]`           |
 | Unified vs split diff view                        | `Review` via `useLocalStorage`  | `localStorage["localreview:diffView"]`           |
@@ -519,7 +522,7 @@ too.
 - Each item shows the range label, the last three lines of the captured snippet and the body
   (clamped to three lines). Items for files no longer in the diff can't be jumped to.
 - **Jumping** (`jumpToComment` in `Review`) clears the filter if it excludes the file, turns off
-  **Hide viewed files** if it hides it, and expands the file through the same `openRequest` used by
+  **Hide viewed files** or **Hide test files** if either hides it, and expands the file through the same `openRequest` used by
   the sidebar. It then stores the comment as the scroll target; an effect waits a frame for the
   render, scrolls the card (`id="comment-<id>"`, `tabIndex=-1`) to the centre and focuses it.
 - **Resolving** sets `resolvedAt` via `actions.setResolved(id, resolved)`; reopening clears it.
@@ -539,6 +542,12 @@ too.
   `hidden` mechanism. Marking a file viewed while it's on hides it straight away. When the
   query matches files but all of them are viewed, the diff shows **Show viewed files** instead of
   **Clear filter**.
+- **Hide test files** removes paths matching `isTestPath` (`lib/tests.ts`) before the viewed
+  filter, through the same mechanism. It's a path heuristic: test directories (`test`, `__tests__`,
+  `spec`, `e2e`, `__mocks__`, `fixtures`, `testdata`, …) and file names across ecosystems
+  (`*.test.*`, `*.spec.*`, `*_test.go`, `test_*.py`, `FooTest.java`, `*.mock.*`, `*.snap`,
+  `vitest.config.*`, …). Hidden test files still count towards progress and their comments are
+  still copied. When every matching file is a test file, the diff shows **Show test files**.
 
 ### 7.8 Accessibility notes
 
@@ -709,7 +718,7 @@ on each comment card. Its intro drops the line-number note for file-level commen
   sidebar's overflow can't clip it. It shows after 400 ms of hover, immediately on keyboard focus
   but not on click, and hides on leave, blur, press or Esc. The tooltip only repeats the
   trigger's `aria-label`, so it's `aria-hidden` rather than linked as a description. Used by the
-  file list toolbar (hide viewed, tree/list view) instead of native `title` tooltips.
+  file list toolbar (hide viewed, hide tests, tree/list view) instead of native `title` tooltips.
 - **Icons** are Lucide SVG paths inlined in `components/icons.tsx` (ISC licence).
 - **Fonts:** Geist Sans and Geist Mono via `@fontsource-variable`.
 - **Layout:** a CSS grid with a sticky app header, a sticky scrollable sidebar and a main column.
@@ -933,6 +942,7 @@ bun run format     # oxfmt (write)
 | 25  | **Commit ranges by shift-click in a list of the branch's commits**                                       | Free-text from/to refs                                                    | Matches GitHub's PR commit picker; no typing or copying SHAs. The API takes any refs, so free-text could be added later.                                                                      |
 | 26  | **Resolved comments are kept, not deleted, and left out of the copied review**                           | Delete on resolve; copy everything with a resolved marker                 | Resolving tracks what the agent has already addressed across rounds, so the next **Copy review** only carries outstanding feedback, and a wrongly resolved comment can be reopened.           |
 | 27  | **Hide whitespace: always fetch `git diff -w` alongside the full diff**                                  | `-w` as a request parameter; re-diffing ignoring whitespace in the UI     | Exactly git's behaviour with little code; the toggle needs no refetch or extra preview snapshots, and fingerprints (viewed marks) stay on the full diff. Costs one extra `git diff` per load. |
+| 28  | **Hide test files: a client-side path heuristic, not configuration**                                     | Configurable globs; `.gitattributes` `linguist-*`; a CLI flag             | Covers the common conventions with zero setup and works on the Pages preview. Globs can be added later if the defaults miss a project's layout.                                               |
 
 ---
 

@@ -1,7 +1,7 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import { describe, expect, test, vi } from "vitest";
 import type { DiffResponse } from "../../shared/types";
-import { parseDiff } from "../../src/parse-diff";
+import { addedFile, parseDiff } from "../../src/parse-diff";
 import { demoDiff, demoDiffText, demoFiles } from "./test/fixtures";
 import { renderApp } from "./test/renderApp";
 
@@ -211,6 +211,44 @@ describe("App", () => {
 
     await user.click(within(section("docs/notes.md")).getByRole("checkbox", { name: "Viewed" }));
     expect(screen.queryByRole("region", { name: "docs/notes.md" })).not.toBeInTheDocument();
+  });
+
+  test("does hide test files from the sidebar and diff and remember it when hide tests is on", async () => {
+    const testFile = addedFile("src/server.test.ts", "test('ok', () => {});\n", "untracked");
+    const body = { ...demoDiff, files: [...demoFiles, testFile] };
+    const { user, unmount } = renderApp({ status: 200, body });
+    await ready();
+    expect(section("src/server.test.ts")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Hide test files" }));
+
+    expect(screen.queryByRole("region", { name: "src/server.test.ts" })).not.toBeInTheDocument();
+    expect(
+      within(screen.getByRole("navigation", { name: "Files" })).queryByRole("link", {
+        name: /server\.test\.ts/,
+      }),
+    ).not.toBeInTheDocument();
+    expect(section("src/server.ts")).toBeInTheDocument();
+    expect(screen.getByText("0/5 viewed")).toBeInTheDocument();
+    unmount();
+
+    renderApp({ status: 200, body });
+    await ready();
+    expect(screen.queryByRole("region", { name: "src/server.test.ts" })).not.toBeInTheDocument();
+  });
+
+  test("does show test files again when every file is a test file", async () => {
+    const testFile = addedFile("src/server.test.ts", "test('ok', () => {});\n", "untracked");
+    const { user } = renderApp({ status: 200, body: { ...demoDiff, files: [testFile] } });
+    await ready();
+    await user.click(screen.getByRole("button", { name: "Hide test files" }));
+    expect(screen.getByText("All files are test files.")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Show test files" }));
+    expect(section("src/server.test.ts")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Hide test files" })).toHaveAttribute(
+      "aria-pressed",
+      "false",
+    );
   });
 
   test("does show viewed files again from the empty diff", async () => {
