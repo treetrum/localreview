@@ -201,7 +201,7 @@ async function resolveTarget(repo: Repo, target: DiffTarget): Promise<Resolved> 
     case "branch": {
       if (repo.base === null) {
         throw new GitError(
-          "Couldn't find a main or master branch. Pick a base branch to compare against.",
+          "Couldn't find a main or master branch (local or on origin). Pick a base branch to compare against.",
         );
       }
       if (head && !repo.mergeBase) {
@@ -287,15 +287,23 @@ async function verifyCommit(repoRoot: string, ref: string): Promise<string> {
   return sha.trim();
 }
 
+/** Prefers the remote's main branch, so the review covers unpushed commits too. */
 async function defaultBase(repoRoot: string): Promise<string | null> {
-  const [main, master, originHead] = await Promise.all([
-    tryGit(repoRoot, ["rev-parse", "--verify", "-q", "main^{commit}"]),
-    tryGit(repoRoot, ["rev-parse", "--verify", "-q", "master^{commit}"]),
+  const has = async (ref: string) =>
+    (await tryGit(repoRoot, ["rev-parse", "--verify", "-q", `${ref}^{commit}`])) !== null;
+  const [originMain, originMaster, originHead, main, master] = await Promise.all([
+    has("origin/main"),
+    has("origin/master"),
     tryGit(repoRoot, ["symbolic-ref", "--short", "-q", "refs/remotes/origin/HEAD"]),
+    has("main"),
+    has("master"),
   ]);
+  if (originMain) return "origin/main";
+  if (originMaster) return "origin/master";
+  if (originHead?.trim()) return originHead.trim();
   if (main) return "main";
   if (master) return "master";
-  return originHead?.trim() || null;
+  return null;
 }
 
 async function emptyTree(repoRoot: string): Promise<string> {

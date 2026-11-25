@@ -35,8 +35,9 @@ localreview [options]
 ```
 
 By default localreview shows everything on the current branch (committed, uncommitted and
-untracked) against its merge-base with `main` (or `master`). Click the diff label in the header to
-review something else:
+untracked) against its merge-base with `origin/main` (falling back to `origin/master`, origin's
+default branch, then local `main` or `master`). Click the diff label in the header to review
+something else:
 
 - **Compare against** another base branch.
 - **Uncommitted changes**: staged, unstaged and untracked changes since the last commit.

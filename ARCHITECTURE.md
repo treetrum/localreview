@@ -55,7 +55,7 @@ diff changed is automatically un-marked as viewed.
 
 | Area                          | Behaviour                                                                                                                                                                                                                            |
 | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **Diff picker**               | Click the diff label in the header to switch: branch vs any base branch (default: `main`/`master`), uncommitted, staged, one commit, or a range (shift-click). In the URL.                                                           |
+| **Diff picker**               | Click the diff label in the header to switch: branch vs any base branch (default: `origin/main`, else `main`), uncommitted, staged, one commit, or a range (shift-click). In the URL.                                                |
 | **Diff view**                 | **Unified** or **split** (side by side, like GitHub), toggled in the header and remembered. Hunk headers, line numbers, wrapped lines, sticky headers, highlighting.                                                                 |
 | **Word highlights**           | Within a modified line, the words that changed get a stronger highlight on top of the line's tint, like GitHub.                                                                                                                      |
 | **Hide whitespace**           | A header toggle (remembered) that hides whitespace-only changes across the diff, like `git diff -w`. Files with nothing else changed say so.                                                                                         |
@@ -207,7 +207,9 @@ localreview [options]
 ### 5.2 Diff targets (`src/git.ts`)
 
 `loadDiff(cwd, { target?, base? })`. `base` is the branch to compare against; it defaults to
-`main`, then `master`, then `origin/HEAD`, and is `null` if none exist.
+`origin/main`, then `origin/master`, then `origin/HEAD`, then local `main`, then `master`, and is
+`null` if none exist. The remote comes first so unpushed commits are part of the review, and a stale
+local `main` doesn't pull in changes that have already landed.
 
 | Target              | Old side                                 | New side           | Untracked | Label                                                |
 | ------------------- | ---------------------------------------- | ------------------ | --------- | ---------------------------------------------------- |
@@ -220,7 +222,7 @@ localreview [options]
   work-in-progress is part of the review. That matches the workflow of reviewing what an agent has
   just done.
 - With no target, it's `branch` if there's a base, otherwise `uncommitted`, so a repo without
-  `main`/`master` still opens and you pick a base in the UI. An explicit `branch` without a base
+  any of those still opens and you pick a base in the UI. An explicit `branch` without a base
   is an error, as is a base with no history in common with `HEAD`.
 - `commits` refs can be anything `rev-parse` accepts; the response echoes them as full SHAs.
   `from` must be an ancestor of `to` (`merge-base --is-ancestor`).
