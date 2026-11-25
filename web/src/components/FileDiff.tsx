@@ -1,4 +1,12 @@
-import { memo, useMemo, useRef, useState, type MouseEvent, type ReactNode } from "react";
+import {
+  memo,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type MouseEvent,
+  type ReactNode,
+} from "react";
 import type { DiffFile, DiffLine } from "../../../shared/types";
 import { cx } from "../lib/cx";
 import {
@@ -57,6 +65,15 @@ export type FileDiffProps = {
 type Selection = { anchor: string; focus: string };
 
 const PREFIX = { add: "+", del: "-", context: " " } as const;
+const TAB_SIZE = 4;
+
+/** Display width of a line in monospace columns, with tabs expanded. */
+function columns(content: string) {
+  let width = 0;
+  for (const char of content)
+    width = char === "\t" ? width + TAB_SIZE - (width % TAB_SIZE) : width + 1;
+  return width;
+}
 
 export const FileDiff = memo(function FileDiff({
   file,
@@ -104,6 +121,15 @@ export const FileDiff = memo(function FileDiff({
     [rows, split],
   );
   const lines = useMemo(() => rowLines(rows), [rows]);
+  const widths = useMemo(() => {
+    const max = { old: 0, new: 0 };
+    for (const line of lines) {
+      const width = columns(line.content);
+      if (line.type !== "add") max.old = Math.max(max.old, width);
+      if (line.type !== "del") max.new = Math.max(max.new, width);
+    }
+    return max;
+  }, [lines]);
   const changes = useMemo(() => intralineChanges(file, ignoreWhitespace), [file, ignoreWhitespace]);
   const indexOf = useMemo(
     () => new Map(lines.map((line, index) => [posKey(linePos(line)), index])),
@@ -419,35 +445,46 @@ export const FileDiff = memo(function FileDiff({
                 : "No content changes."}
             </p>
           ) : (
-            <table className={cx(styles.table, split && styles.split, dragging && styles.dragging)}>
-              <colgroup>
-                {split ? (
-                  <>
-                    <col className={styles.numCol} />
-                    <col />
-                    <col className={styles.numCol} />
-                    <col />
-                  </>
-                ) : (
-                  <>
-                    <col className={styles.numCol} />
-                    <col className={styles.numCol} />
-                    <col />
-                  </>
-                )}
-              </colgroup>
-              <tbody>
-                {displayRows.map((row) =>
-                  row.kind === "gap" ? (
-                    <GapRowView key={row.key} row={row} split={split} onReveal={reveal} />
-                  ) : row.kind === "pair" ? (
-                    splitPair(row)
+            <div className={styles.scroll}>
+              <table
+                className={cx(styles.table, split && styles.split, dragging && styles.dragging)}
+                style={
+                  {
+                    "--old-ch": widths.old,
+                    "--new-ch": widths.new,
+                    "--line-ch": Math.max(widths.old, widths.new),
+                  } as CSSProperties
+                }
+              >
+                <colgroup>
+                  {split ? (
+                    <>
+                      <col className={styles.numCol} />
+                      <col className={styles.oldCol} />
+                      <col className={styles.numCol} />
+                      <col className={styles.newCol} />
+                    </>
                   ) : (
-                    unifiedLine(row)
-                  ),
-                )}
-              </tbody>
-            </table>
+                    <>
+                      <col className={styles.numCol} />
+                      <col className={styles.numCol} />
+                      <col />
+                    </>
+                  )}
+                </colgroup>
+                <tbody>
+                  {displayRows.map((row) =>
+                    row.kind === "gap" ? (
+                      <GapRowView key={row.key} row={row} split={split} onReveal={reveal} />
+                    ) : row.kind === "pair" ? (
+                      splitPair(row)
+                    ) : (
+                      unifiedLine(row)
+                    ),
+                  )}
+                </tbody>
+              </table>
+            </div>
           )}
         </div>
       )}

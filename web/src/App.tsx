@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type CSSProperties } from "react";
 import { filePath, type DiffResponse, type DiffTarget } from "../../shared/types";
 import { commentElementId } from "./components/Comment";
 import { CommentsPanel } from "./components/CommentsPanel";
@@ -18,6 +18,7 @@ import {
 } from "./components/icons";
 import { Button } from "./components/ui/Button";
 import { Progress } from "./components/ui/Progress";
+import { ResizeHandle } from "./components/ui/ResizeHandle";
 import { Textarea } from "./components/ui/Textarea";
 import { ToggleGroup } from "./components/ui/ToggleGroup";
 import { matchesQuery } from "./lib/filter";
@@ -95,6 +96,9 @@ export function App() {
 
 const EMPTY_COMMENTS: ReviewComment[] = [];
 const isBoolean = (value: unknown): value is boolean => typeof value === "boolean";
+const isNumber = (value: unknown): value is number => typeof value === "number";
+
+const SIDEBAR = { default: 288, min: 192, max: 640 };
 
 type ReviewProps = {
   diff: DiffResponse;
@@ -121,6 +125,13 @@ function Review({ diff, error, refreshing, onRefresh, onTargetChange, onBaseChan
     false,
     isBoolean,
   );
+  const [sidebarWidth, setSidebarWidth] = useLocalStorage(
+    "localreview:sidebarWidth",
+    SIDEBAR.default,
+    isNumber,
+  );
+  const maxSidebar = useSidebarMax();
+  const sidebar = Math.min(Math.max(sidebarWidth, SIDEBAR.min), maxSidebar);
   const [copied, copyText] = useCopy();
   const [openRequest, setOpenRequest] = useState<{ path: string; seq: number } | null>(null);
   const openFile = useCallback(
@@ -239,7 +250,10 @@ function Review({ diff, error, refreshing, onRefresh, onTargetChange, onBaseChan
   };
 
   return (
-    <div className={cx(styles.layout, showComments && styles.withComments)}>
+    <div
+      className={cx(styles.layout, showComments && styles.withComments)}
+      style={{ "--sidebar-width": `${sidebar}px` } as CSSProperties}
+    >
       <header className={styles.header}>
         <div className={styles.title}>
           <h1 className={styles.repo}>{diff.repoName}</h1>
@@ -342,6 +356,14 @@ function Review({ diff, error, refreshing, onRefresh, onTargetChange, onBaseChan
           commentCounts={commentCounts}
           onFileOpen={openFile}
         />
+        <ResizeHandle
+          label="Resize file list"
+          value={sidebar}
+          min={SIDEBAR.min}
+          max={maxSidebar}
+          defaultValue={SIDEBAR.default}
+          onChange={setSidebarWidth}
+        />
       </aside>
 
       <main className={styles.main}>
@@ -424,6 +446,20 @@ function Review({ diff, error, refreshing, onRefresh, onTargetChange, onBaseChan
       )}
     </div>
   );
+}
+
+const sidebarMax = () =>
+  Math.max(SIDEBAR.min, Math.min(SIDEBAR.max, Math.floor(window.innerWidth / 2)));
+
+/** The widest the sidebar may be: a fixed cap, or half the window if that's narrower. */
+function useSidebarMax() {
+  const [max, setMax] = useState(sidebarMax);
+  useEffect(() => {
+    const onResize = () => setMax(sidebarMax());
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+  return max;
 }
 
 /** Groups comments by path, reusing the previous array for paths whose comments didn't change. */

@@ -86,8 +86,18 @@
   text-align: center;
 }
 
+/* Long lines scroll sideways rather than wrap. A size container so comments can fit its width. */
+.scroll {
+  overflow-x: auto;
+  container-type: inline-size;
+}
+
+/*
+ * Sized from the longest line, in columns (--line-ch, set inline), so the layout can stay fixed.
+ * A code column holds the line, the prefix (1.25ch) and 1rem of padding.
+ */
 .table {
-  width: 100%;
+  width: max(100cqi, calc(7rem + (var(--line-ch) + 1.25) * 1ch + 1rem));
   border-collapse: collapse;
   table-layout: fixed;
   font-family: var(--font-mono);
@@ -155,8 +165,7 @@
 
 .code {
   padding: 0 0.75rem 0 0.25rem;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
+  white-space: pre;
   tab-size: 4;
 }
 
@@ -229,10 +238,33 @@
   background: var(--background);
 }
 
+/* Stays in view when the diff is scrolled sideways. */
 .stack {
+  position: sticky;
+  left: 7.25rem;
   display: grid;
   gap: 0.5rem;
-  max-width: 48rem;
+  max-width: min(48rem, 100cqi - 8rem);
+}
+
+/* Each half is half the view, or wider if its own lines need it, so the other side isn't pushed off. */
+.split.table {
+  --old-width: max(50cqi - 3.5rem, (var(--old-ch) + 1.25) * 1ch + 1rem);
+  --new-width: max(50cqi - 3.5rem, (var(--new-ch) + 1.25) * 1ch + 1rem);
+  width: calc(7rem + var(--old-width) + var(--new-width));
+}
+
+.oldCol {
+  width: var(--old-width);
+}
+
+.newCol {
+  width: var(--new-width);
+}
+
+.split .stack {
+  left: 4.25rem;
+  max-width: min(48rem, 50cqi - 5rem);
 }
 
 .split .code + .num {
