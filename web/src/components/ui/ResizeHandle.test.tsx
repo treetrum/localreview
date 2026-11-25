@@ -51,6 +51,22 @@ describe("ResizeHandle", () => {
     expect(onChange).toHaveBeenLastCalledWith(500);
   });
 
+  test("does widen when moved left when it sits on the left edge", async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    render(<ResizeHandle {...defaultProps} edge="left" onChange={onChange} />);
+    fireEvent.pointerDown(handle(), { button: 0, clientX: 300, pointerId: 1 });
+    fireEvent.pointerMove(handle(), { clientX: 260, pointerId: 1 });
+    expect(onChange).toHaveBeenLastCalledWith(340);
+    fireEvent.pointerUp(handle(), { pointerId: 1 });
+
+    await user.tab();
+    await user.keyboard("{ArrowLeft}");
+    expect(onChange).toHaveBeenLastCalledWith(316);
+    await user.keyboard("{ArrowRight}");
+    expect(onChange).toHaveBeenLastCalledWith(284);
+  });
+
   test("does reset to the default width when double-clicked", async () => {
     const user = userEvent.setup();
     const onChange = vi.fn();

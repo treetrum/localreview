@@ -99,6 +99,11 @@ const isBoolean = (value: unknown): value is boolean => typeof value === "boolea
 const isNumber = (value: unknown): value is number => typeof value === "number";
 
 const SIDEBAR = { default: 288, min: 192, max: 640 };
+const COMMENTS = { default: 320, min: 240, max: 640 };
+/** Room always left for the diff when sizing the side panels. */
+const MIN_MAIN = 480;
+/** Matches the media query below which the comments panel replaces the file list. */
+const ONE_PANEL_BELOW = 1100;
 
 type ReviewProps = {
   diff: DiffResponse;
@@ -130,8 +135,17 @@ function Review({ diff, error, refreshing, onRefresh, onTargetChange, onBaseChan
     SIDEBAR.default,
     isNumber,
   );
-  const maxSidebar = useSidebarMax();
-  const sidebar = Math.min(Math.max(sidebarWidth, SIDEBAR.min), maxSidebar);
+  const [commentsWidth, setCommentsWidth] = useLocalStorage(
+    "localreview:commentsWidth",
+    COMMENTS.default,
+    isNumber,
+  );
+  const windowWidth = useWindowWidth();
+  const bothPanels = showComments && windowWidth > ONE_PANEL_BELOW;
+  const maxSidebar = panelMax(SIDEBAR, windowWidth - (bothPanels ? commentsWidth : 0));
+  const sidebar = clamp(sidebarWidth, SIDEBAR.min, maxSidebar);
+  const maxComments = panelMax(COMMENTS, windowWidth - (bothPanels ? sidebar : 0));
+  const comments = clamp(commentsWidth, COMMENTS.min, maxComments);
   const [copied, copyText] = useCopy();
   const [openRequest, setOpenRequest] = useState<{ path: string; seq: number } | null>(null);
   const openFile = useCallback(
@@ -252,7 +266,9 @@ function Review({ diff, error, refreshing, onRefresh, onTargetChange, onBaseChan
   return (
     <div
       className={cx(styles.layout, showComments && styles.withComments)}
-      style={{ "--sidebar-width": `${sidebar}px` } as CSSProperties}
+      style={
+        { "--sidebar-width": `${sidebar}px`, "--comments-width": `${comments}px` } as CSSProperties
+      }
     >
       <header className={styles.header}>
         <div className={styles.title}>
@@ -442,24 +458,35 @@ function Review({ diff, error, refreshing, onRefresh, onTargetChange, onBaseChan
             onResolve={actions.setResolved}
             onClose={() => setShowComments(false)}
           />
+          <ResizeHandle
+            label="Resize comments panel"
+            edge="left"
+            value={comments}
+            min={COMMENTS.min}
+            max={maxComments}
+            defaultValue={COMMENTS.default}
+            onChange={setCommentsWidth}
+          />
         </aside>
       )}
     </div>
   );
 }
 
-const sidebarMax = () =>
-  Math.max(SIDEBAR.min, Math.min(SIDEBAR.max, Math.floor(window.innerWidth / 2)));
+const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
 
-/** The widest the sidebar may be: a fixed cap, or half the window if that's narrower. */
-function useSidebarMax() {
-  const [max, setMax] = useState(sidebarMax);
+/** The widest a side panel may be, leaving `MIN_MAIN` for the diff out of `available` pixels. */
+const panelMax = (limits: { min: number; max: number }, available: number) =>
+  clamp(available - MIN_MAIN, limits.min, limits.max);
+
+function useWindowWidth() {
+  const [width, setWidth] = useState(() => window.innerWidth);
   useEffect(() => {
-    const onResize = () => setMax(sidebarMax());
+    const onResize = () => setWidth(window.innerWidth);
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
   }, []);
-  return max;
+  return width;
 }
 
 /** Groups comments by path, reusing the previous array for paths whose comments didn't change. */

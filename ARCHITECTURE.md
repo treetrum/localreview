@@ -63,7 +63,7 @@ diff changed is automatically un-marked as viewed.
 | **Line comments**             | Hover a line and click **+**. Drag across rows, or shift-click a second **+**, for a range. Comments on deleted lines are anchored to the old side.                                                                                                                                                                                                           |
 | **File and overall comments** | **Comment on file** per file; an **Overall feedback** box for the whole change.                                                                                                                                                                                                                                                                               |
 | **Editing**                   | Edit, delete or copy comments. **Copy comment** copies just that one as Markdown feedback. ⌘/Ctrl+↵ submits, Esc cancels.                                                                                                                                                                                                                                     |
-| **Comments panel**            | **Comments** in the header toggles a right-hand panel (remembered) listing open or resolved comments by file, each with its line range, the last lines of its snippet and its body. Clicking one scrolls to it in the diff.                                                                                                                                   |
+| **Comments panel**            | **Comments** in the header toggles a right-hand panel (remembered) listing open or resolved comments by file, each with its line range, the last lines of its snippet and its body. Clicking one scrolls to it in the diff. Resizable from its left edge, like the sidebar.                                                                                   |
 | **Resolve comments**          | Resolve a comment from its card or the panel once it's been dealt with. Resolved comments shrink to one line in the diff, are left out of **Copy review** and sidebar counts, and can be reopened.                                                                                                                                                            |
 | **Outdated comments**         | If a commented line disappears after a refresh, the comment moves to the top of the file with an _Outdated_ badge. It's still included when copying.                                                                                                                                                                                                          |
 | **Copy review**               | Formats all feedback as Markdown (with `diff` snippets) and copies it to the clipboard.                                                                                                                                                                                                                                                                       |
@@ -735,11 +735,11 @@ on each comment card. Its intro drops the line-number note for file-level commen
 - **Fonts:** Geist Sans and Geist Mono via `@fontsource-variable`.
 - **Layout:** a CSS grid with a sticky app header, a sticky scrollable sidebar and a main column.
   File headers are sticky beneath the app header. File cards use `overflow: clip` (not `hidden`)
-  so rounded corners clip their content without breaking `position: sticky`. The sidebar's width
-  is the `--sidebar-width` variable, set inline from a remembered value via a `ResizeHandle`
-  (a focusable `role="separator"`), clamped to 192 px and the lesser of 640 px or half the
-  window. Below 760 px the
-  sidebar is hidden.
+  so rounded corners clip their content without breaking `position: sticky`. The file list and
+  comments panel widths are the `--sidebar-width` and `--comments-width` variables, set inline
+  from remembered values. Each is resized by a `ResizeHandle` (a focusable `role="separator"` on
+  the panel's inner edge) and clamped to at most 640 px while leaving the diff at least 480 px
+  beside whichever panels are showing. Below 760 px the sidebar is hidden.
 - **Specificity gotcha:** a module class that overrides a primitive's styles can lose to it
   depending on stylesheet order. Where that happens, the selector is doubled up (e.g.
   `.search .searchInput`) rather than relying on load order.

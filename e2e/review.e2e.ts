@@ -172,6 +172,26 @@ test("resizes the file list by dragging its edge and keeps the width after a rel
   await expect.poll(async () => (await sidebar.boundingBox())!.width).toBeCloseTo(before + 120, 0);
 });
 
+test("resizes the comments panel by dragging its left edge and keeps the width after a reload", async ({
+  page,
+}) => {
+  await page.getByRole("button", { name: "Comments" }).click();
+  const panel = page.getByRole("complementary").filter({
+    has: page.getByRole("region", { name: "Comments" }),
+  });
+  const handle = page.getByRole("separator", { name: "Resize comments panel" });
+  const before = (await panel.boundingBox())!.width;
+  const box = (await handle.boundingBox())!;
+  await page.mouse.move(box.x + box.width / 2, box.y + 100);
+  await page.mouse.down();
+  await page.mouse.move(box.x + box.width / 2 - 80, box.y + 100, { steps: 5 });
+  await page.mouse.up();
+  await expect.poll(async () => (await panel.boundingBox())!.width).toBeCloseTo(before + 80, 0);
+
+  await page.reload();
+  await expect.poll(async () => (await panel.boundingBox())!.width).toBeCloseTo(before + 80, 0);
+});
+
 test("keeps comments and viewed state after a reload", async ({ page }) => {
   const readme = section(page, "README.md");
   await readme.getByRole("button", { name: "Comment on file" }).click();

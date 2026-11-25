@@ -10,12 +10,14 @@ export type ResizeHandleProps = {
   /** Width the handle resets to on double-click. */
   defaultValue: number;
   onChange: (value: number) => void;
+  /** Which edge of the resized element the handle sits on. */
+  edge?: "left" | "right";
   className?: string;
 };
 
 const STEP = 16;
 
-/** A vertical separator that resizes the element to its left, by drag or arrow keys. */
+/** A vertical separator on an element's edge that resizes it, by drag or arrow keys. */
 export function ResizeHandle({
   label,
   value,
@@ -23,8 +25,11 @@ export function ResizeHandle({
   max,
   defaultValue,
   onChange,
+  edge = "right",
   className,
 }: ResizeHandleProps) {
+  // Moving a left edge leftwards widens the element.
+  const direction = edge === "right" ? 1 : -1;
   const [drag, setDrag] = useState<{ x: number; width: number } | null>(null);
   const clamp = (width: number) => Math.round(Math.min(max, Math.max(min, width)));
 
@@ -36,13 +41,13 @@ export function ResizeHandle({
   };
 
   const onPointerMove = (event: PointerEvent<HTMLDivElement>) => {
-    if (drag) onChange(clamp(drag.width + event.clientX - drag.x));
+    if (drag) onChange(clamp(drag.width + (event.clientX - drag.x) * direction));
   };
 
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     const next = {
-      ArrowLeft: value - STEP,
-      ArrowRight: value + STEP,
+      ArrowLeft: value - STEP * direction,
+      ArrowRight: value + STEP * direction,
       Home: min,
       End: max,
     }[event.key];
@@ -60,7 +65,7 @@ export function ResizeHandle({
       aria-valuemin={min}
       aria-valuemax={max}
       tabIndex={0}
-      className={cx(styles.handle, drag && styles.dragging, className)}
+      className={cx(styles.handle, styles[edge], drag && styles.dragging, className)}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={() => setDrag(null)}
