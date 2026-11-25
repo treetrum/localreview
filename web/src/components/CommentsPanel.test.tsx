@@ -26,7 +26,7 @@ describe("CommentsPanel", () => {
     );
     const item = within(panel).getByRole("button", { name: jump });
     expect(item).toHaveTextContent("Line 6");
-    expect(item).toHaveTextContent("+    async fetch(req) {", { normalizeWhitespace: false });
+    expect(item).toHaveTextContent("+async fetch(req) {", { normalizeWhitespace: false });
     expect(item).toHaveTextContent("Why make this async?");
     expect(within(panel).queryByText("Typo fixed")).not.toBeInTheDocument();
   });

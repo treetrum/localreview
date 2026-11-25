@@ -25,3 +25,17 @@ export function groupComments(comments: ReviewComment[], paths: string[]): Comme
     ),
   }));
 }
+
+/** Strips the leading whitespace shared by all non-blank lines, so a snippet starts at its code. */
+export function dedent<T extends { content: string }>(lines: T[]): T[] {
+  const indents = lines
+    .filter((line) => line.content.trim())
+    .map((line) => /^[ \t]*/.exec(line.content)![0]);
+  if (indents.length === 0) return lines;
+  let common = indents[0]!;
+  for (const indent of indents) {
+    while (!indent.startsWith(common)) common = common.slice(0, -1);
+  }
+  if (!common) return lines;
+  return lines.map((line) => ({ ...line, content: line.content.slice(common.length) }));
+}
