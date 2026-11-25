@@ -890,7 +890,7 @@ bun run format     # oxfmt (write)
   deploy to the production URL, `localreview.pages.dev`, so it always shows `main`. When a PR
   closes, a `cleanup` job deletes that PR's deployments through the Cloudflare API. The UI only
   talks to the server through `GET /api/diff`, so `scripts/preview-snapshot.ts` builds a fixed demo
-  repo (`acme-shop`: a `feature/discounts` branch with four commits, `main` and `release/1.0` to
+  repo (`acme-shop`: a `feature/discounts` branch with five commits, `main` and `release/1.0` to
   compare against, and staged, unstaged and untracked changes) and, after the build, writes a
   snapshot to `dist/snapshots/` of every diff the picker can ask for: each base (or none) with
   each target and every commit range. Static hosting ignores query strings, so a Pages Function,
