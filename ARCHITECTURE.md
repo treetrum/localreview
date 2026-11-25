@@ -165,6 +165,7 @@ localreview/
 ├── scripts/dev.ts            # runs the API (watch mode) and Vite together
 ├── scripts/preview-*.ts      # PR preview: demo repo snapshots + their query → file mapping
 ├── functions/api/diff.ts     # Cloudflare Pages Function serving those snapshots
+├── skills/localreview/       # SKILL.md: how an AI agent should use localreview (shipped to users)
 ├── .githooks/                # pre-commit (bun run check), commit-msg (Conventional Commits)
 ├── .github/workflows/        # ci.yml (checks + E2E), pr-title.yml (Conventional Commit titles)
 ├── vite.config.ts            # Vite + Vitest config (web + server projects)
@@ -672,6 +673,9 @@ Rules:
   fence grows longer than any backtick run inside the snippet so it can't close early.
 - **Blank comments** and **resolved comments** are skipped. **Copy review** is disabled unless
   there's real feedback (`hasFeedback` ignores resolved comments).
+
+[`skills/localreview/SKILL.md`](skills/localreview/SKILL.md) explains this format to the agent
+receiving it, so keep it in sync when the format changes.
 
 `formatComment(comment, outdated)` formats one comment the same way (its file heading, range
 heading and snippet, without the review title or overall feedback) for the **Copy comment** button

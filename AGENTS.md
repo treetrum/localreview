@@ -6,6 +6,8 @@ non-trivial changes and keep it up to date when behaviour or structure changes.
 
 ## Layout
 
+- `skills/localreview/SKILL.md`: user-facing guide for agents _using_ localreview (not this file).
+  Update it when the copied review format, CLI flags or default diff change.
 - `src/`: Bun CLI and API server. Uses Bun APIs; tested with Vitest running under Bun.
 - `shared/`: types shared by server and UI.
 - `web/`: the React UI (Vite root). Tested with Vitest + happy-dom.

@@ -8,7 +8,7 @@ import { startServer } from "./server";
 const USAGE = `Usage: localreview [options]
 
 Review a git diff in the browser and copy your comments as Markdown. It starts on the current
-branch vs main/master; pick another base, uncommitted or staged changes, or commits in the UI.
+branch vs origin/main (or main/master); pick another base, uncommitted or staged changes, or commits in the UI.
 
 Options:
   -C, --cwd <dir>       Run as if started in <dir>

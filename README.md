@@ -70,6 +70,21 @@ In the browser:
 
 Review state is stored in the browser's `localStorage`, per repository and diff target.
 
+## Using it with an AI agent
+
+[`skills/localreview/SKILL.md`](skills/localreview/SKILL.md) teaches an agent how to hand its
+changes to you in localreview and how to read the review you paste back. Install it as a skill:
+
+```sh
+# Claude Code (all projects)
+ln -s "$PWD/skills/localreview" ~/.claude/skills/localreview
+# Codex
+ln -s "$PWD/skills/localreview" ~/.codex/skills/localreview
+```
+
+Agents without skill support can be pointed at the file, or have its contents pasted into a
+project's `AGENTS.md` / `CLAUDE.md`.
+
 ## Development
 
 ```sh
