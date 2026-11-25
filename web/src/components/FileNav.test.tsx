@@ -10,6 +10,7 @@ const files = treeOrder(tree);
 
 const onQueryChange = vi.fn<(query: string) => void>();
 const onHideViewedChange = vi.fn<(hideViewed: boolean) => void>();
+const onHideTestsChange = vi.fn<(hideTests: boolean) => void>();
 const onFileOpen = vi.fn<(path: string) => void>();
 const defaultProps: FileNavProps = {
   tree,
@@ -19,6 +20,8 @@ const defaultProps: FileNavProps = {
   onQueryChange,
   hideViewed: false,
   onHideViewedChange,
+  hideTests: false,
+  onHideTestsChange,
   fileId: new Map(files.map((file, i) => [file.newPath, `file-${i}`])),
   viewed: new Set(),
   commentCounts: new Map(),
@@ -168,6 +171,20 @@ describe("FileNav", () => {
     expect(onHideViewedChange.mock.calls).toEqual([[true], [false]]);
   });
 
+  test("does report toggling when clicking hide test files", async () => {
+    const user = userEvent.setup();
+    const { rerender } = render(<FileNav {...defaultProps} />);
+    const toggle = screen.getByRole("button", { name: "Hide test files" });
+    expect(toggle).toHaveAttribute("aria-pressed", "false");
+    await user.click(toggle);
+    expect(onHideTestsChange.mock.calls).toEqual([[true]]);
+
+    rerender(<FileNav {...defaultProps} hideTests />);
+    expect(toggle).toHaveAttribute("aria-pressed", "true");
+    await user.click(toggle);
+    expect(onHideTestsChange.mock.calls).toEqual([[true], [false]]);
+  });
+
   test("does say so when no files match", () => {
     render(<FileNav {...defaultProps} query="zzz" tree={[]} files={[]} />);
     expect(screen.getByText("No matching files")).toBeInTheDocument();
@@ -176,5 +193,10 @@ describe("FileNav", () => {
   test("does say so when every file is viewed and hidden", () => {
     render(<FileNav {...defaultProps} hideViewed tree={[]} files={[]} />);
     expect(screen.getByText("No unviewed files")).toBeInTheDocument();
+  });
+
+  test("does say so when every file is a test file and hidden", () => {
+    render(<FileNav {...defaultProps} hideTests tree={[]} files={[]} />);
+    expect(screen.getByText("No non-test files")).toBeInTheDocument();
   });
 });

@@ -65,6 +65,25 @@ describe("loadDiff", () => {
     expect(summary(diff.files)).toEqual([["keep.ts", "modified"]]);
   });
 
+  test("does compare against origin/main when it exists", async () => {
+    repo.git("update-ref", "refs/remotes/origin/main", "main");
+    repo.write("keep.ts", "unpushed\n");
+    repo.commit("unpushed on main");
+
+    const diff = await loadDiff(repo.root);
+    expect(diff.label).toBe("main vs origin/main");
+    expect(diff.base).toBe("origin/main");
+    expect(summary(diff.files)).toEqual([["keep.ts", "modified"]]);
+  });
+
+  test("does compare against origin's default branch when it isn't main or master", async () => {
+    repo.git("branch", "-m", "main", "trunk");
+    repo.git("update-ref", "refs/remotes/origin/trunk", "trunk");
+    repo.git("symbolic-ref", "refs/remotes/origin/HEAD", "refs/remotes/origin/trunk");
+    repo.git("checkout", "-q", "-b", "feature");
+    expect((await loadDiff(repo.root)).label).toBe("feature vs origin/trunk");
+  });
+
   test("does fall back to master when there is no main", async () => {
     repo.git("branch", "-m", "main", "master");
     repo.git("checkout", "-q", "-b", "feature");

@@ -8,7 +8,10 @@ import {
   ChevronDown,
   ChevronRight,
   CircleCheck,
+  Eye,
   EyeOff,
+  FlaskConical,
+  FlaskConicalOff,
   Folder,
   FolderOpen,
   List,
@@ -36,6 +39,8 @@ export type FileNavProps = {
   onQueryChange: (query: string) => void;
   hideViewed: boolean;
   onHideViewedChange: (hideViewed: boolean) => void;
+  hideTests: boolean;
+  onHideTestsChange: (hideTests: boolean) => void;
   fileId: ReadonlyMap<string, string>;
   viewed: ReadonlySet<string>;
   commentCounts: ReadonlyMap<string, number>;
@@ -50,6 +55,8 @@ export const FileNav = memo(function FileNav({
   onQueryChange,
   hideViewed,
   onHideViewedChange,
+  hideTests,
+  onHideTestsChange,
   fileId,
   viewed,
   commentCounts,
@@ -57,6 +64,7 @@ export const FileNav = memo(function FileNav({
 }: FileNavProps) {
   const [view, setView] = useLocalStorage<FileView>("localreview:fileView", "tree", isFileView);
   const hideViewedTip = useTooltip("Hide viewed files");
+  const hideTestsTip = useTooltip("Hide test files");
   const row = (file: DiffFile, depth: number, showDir: boolean) => {
     const path = filePath(file);
     return (
@@ -86,14 +94,26 @@ export const FileNav = memo(function FileNav({
           {...hideViewedTip.triggerProps}
           variant="outline"
           size="icon-sm"
-          className={styles.hideViewed}
+          className={styles.filterToggle}
           aria-label="Hide viewed files"
           aria-pressed={hideViewed}
           onClick={() => onHideViewedChange(!hideViewed)}
         >
-          <EyeOff />
+          {hideViewed ? <EyeOff /> : <Eye />}
         </Button>
         {hideViewedTip.tooltip}
+        <Button
+          {...hideTestsTip.triggerProps}
+          variant="outline"
+          size="icon-sm"
+          className={styles.filterToggle}
+          aria-label="Hide test files"
+          aria-pressed={hideTests}
+          onClick={() => onHideTestsChange(!hideTests)}
+        >
+          {hideTests ? <FlaskConicalOff /> : <FlaskConical />}
+        </Button>
+        {hideTestsTip.tooltip}
         <ToggleGroup
           label="File view"
           value={view}
@@ -108,7 +128,7 @@ export const FileNav = memo(function FileNav({
         <p className={styles.empty}>
           {totalCount === 0
             ? "No changed files"
-            : `No ${query ? "matching " : ""}${hideViewed ? "unviewed " : ""}files`}
+            : `No ${query ? "matching " : ""}${hideViewed ? "unviewed " : ""}${hideTests ? "non-test " : ""}files`}
         </p>
       ) : view === "tree" ? (
         <Tree nodes={tree} renderFile={(file, depth) => row(file, depth, false)} />

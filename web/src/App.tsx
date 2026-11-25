@@ -21,6 +21,7 @@ import { Progress } from "./components/ui/Progress";
 import { Textarea } from "./components/ui/Textarea";
 import { ToggleGroup } from "./components/ui/ToggleGroup";
 import { matchesQuery } from "./lib/filter";
+import { isTestPath } from "./lib/tests";
 import { formatReview } from "./lib/format";
 import { cx } from "./lib/cx";
 import {
@@ -108,6 +109,7 @@ function Review({ diff, error, refreshing, onRefresh, onTargetChange, onBaseChan
   const { review, actions } = useReview(storageKey(diff));
   const [query, setQuery] = useState("");
   const [hideViewed, setHideViewed] = useLocalStorage("localreview:hideViewed", false, isBoolean);
+  const [hideTests, setHideTests] = useLocalStorage("localreview:hideTests", false, isBoolean);
   const [view, setView] = useLocalStorage<DiffView>("localreview:diffView", "unified", isDiffView);
   const [ignoreWhitespace, setIgnoreWhitespace] = useLocalStorage(
     "localreview:hideWhitespace",
@@ -157,10 +159,14 @@ function Review({ diff, error, refreshing, onRefresh, onTargetChange, onBaseChan
     () => files.map(filePath).filter((path) => matchesQuery(path, query)),
     [files, query],
   );
+  const nonTestPaths = useMemo(
+    () => (hideTests ? matchingPaths.filter((path) => !isTestPath(path)) : matchingPaths),
+    [matchingPaths, hideTests],
+  );
   const visiblePaths = useMemo(
     () =>
-      new Set(hideViewed ? matchingPaths.filter((path) => !viewedPaths.has(path)) : matchingPaths),
-    [matchingPaths, hideViewed, viewedPaths],
+      new Set(hideViewed ? nonTestPaths.filter((path) => !viewedPaths.has(path)) : nonTestPaths),
+    [nonTestPaths, hideViewed, viewedPaths],
   );
   const visibleFiles = useMemo(
     () => files.filter((file) => visiblePaths.has(filePath(file))),
@@ -202,10 +208,11 @@ function Review({ diff, error, refreshing, onRefresh, onTargetChange, onBaseChan
     (comment: ReviewComment) => {
       if (!matchesQuery(comment.path, query)) setQuery("");
       if (hideViewed && viewedPaths.has(comment.path)) setHideViewed(false);
+      if (hideTests && isTestPath(comment.path)) setHideTests(false);
       openFile(comment.path);
       setScrollTarget({ id: comment.id });
     },
-    [query, hideViewed, viewedPaths, setHideViewed, openFile],
+    [query, hideViewed, viewedPaths, setHideViewed, hideTests, setHideTests, openFile],
   );
 
   const copy = useCallback(
@@ -328,6 +335,8 @@ function Review({ diff, error, refreshing, onRefresh, onTargetChange, onBaseChan
           onQueryChange={setQuery}
           hideViewed={hideViewed}
           onHideViewedChange={setHideViewed}
+          hideTests={hideTests}
+          onHideTestsChange={setHideTests}
           fileId={fileId}
           viewed={viewedPaths}
           commentCounts={commentCounts}
@@ -360,6 +369,13 @@ function Review({ diff, error, refreshing, onRefresh, onTargetChange, onBaseChan
             <p>No files match “{query}”.</p>
             <Button variant="outline" size="sm" onClick={() => setQuery("")}>
               Clear filter
+            </Button>
+          </div>
+        ) : nonTestPaths.length === 0 ? (
+          <div className={styles.empty}>
+            <p>{query ? "All matching files are test files." : "All files are test files."}</p>
+            <Button variant="outline" size="sm" onClick={() => setHideTests(false)}>
+              Show test files
             </Button>
           </div>
         ) : (

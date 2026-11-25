@@ -122,6 +122,27 @@ export function applyDiscount(subtotal: number, discount: Discount) {
 }
 `;
 
+const discountsTest = `import { describe, expect, test } from "vitest";
+import { applyDiscount } from "./discounts";
+
+describe("applyDiscount", () => {
+  test("takes a percentage off the subtotal", () => {
+    expect(applyDiscount(1000, { kind: "percent", value: 10 })).toBe(900);
+  });
+
+  test("never goes below zero", () => {
+    expect(applyDiscount(500, { kind: "fixed", value: 800 })).toBe(0);
+  });
+});
+`;
+
+// So Hide test files has more than one kind of test file to hide.
+const cartFixture = `import type { Item } from "../../src/cart";
+
+export const apple: Item = { id: "apple", name: "Apple", price: 120, quantity: 3 };
+export const pear: Item = { id: "pear", name: "Pear", price: 90, quantity: 1 };
+`;
+
 const stylesBase = `.cart {
   display: grid;
   gap: 8px;
@@ -211,6 +232,9 @@ try {
   commit("Add discount types");
   write("src/cart.ts", cartHead);
   commit("Apply discounts in the cart");
+  write("src/discounts.test.ts", discountsTest);
+  write("test/fixtures/cart.ts", cartFixture);
+  commit("Test discounts");
   write("styles/cart.css", stylesHead);
   commit("Polish the cart styles");
 
