@@ -11,7 +11,7 @@
   place-items: center;
   width: 2rem;
   height: 2rem;
-  color: var(--muted-foreground);
+  color: var(--foreground);
 }
 
 .item + .item {

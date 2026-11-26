@@ -10,7 +10,7 @@ export type MarkedToken = Token & { changed?: boolean };
 /** Lines longer than this aren't compared; minified code would just be noise. */
 const MAX_LENGTH = 1000;
 /** Below this share of unchanged (non-whitespace) characters, the lines are too different. */
-const MIN_SIMILARITY = 0.4;
+const MIN_SIMILARITY = 0.5;
 /** Above this many deletion × addition pairs, runs fall back to pairing lines by position. */
 const MAX_MATCH_CELLS = 2500;
 
@@ -21,7 +21,7 @@ const isBlank = (text: string) => /^\s*$/.test(text);
  * The changed parts of modified lines, keyed by `posKey`. Within each run of changes each deletion
  * is compared, word by word, with the addition `matchLines` pairs it with.
  */
-export function intralineChanges(file: DiffFile, ignoreWhitespace = false): Map<string, Range[]> {
+export function intralineChanges(file: DiffFile): Map<string, Range[]> {
   const result = new Map<string, Range[]>();
   for (const hunk of file.hunks) {
     let dels: DiffLine[] = [];
@@ -34,7 +34,7 @@ export function intralineChanges(file: DiffFile, ignoreWhitespace = false): Map<
       for (const [i, j] of matches) {
         const del = dels[i]!;
         const add = adds[j]!;
-        const ranges = compareLines(del.content, add.content, ignoreWhitespace);
+        const ranges = compareLines(del.content, add.content);
         if (!ranges) continue;
         if (ranges.old.length > 0) result.set(posKey(linePos(del)), ranges.old);
         if (ranges.new.length > 0) result.set(posKey(linePos(add)), ranges.new);
@@ -117,7 +117,6 @@ function compareWords(oldText: string, newText: string) {
 export function compareLines(
   oldText: string,
   newText: string,
-  ignoreWhitespace = false,
 ): { old: Range[]; new: Range[] } | null {
   const compared = compareWords(oldText, newText);
   if (!compared) return null;
@@ -125,20 +124,21 @@ export function compareLines(
   const oldKept = new Set(pairs.map(([i]) => i));
   const newKept = new Set(pairs.map(([, j]) => j));
   return {
-    old: changedRanges(a, oldKept, ignoreWhitespace),
-    new: changedRanges(b, newKept, ignoreWhitespace),
+    old: changedRanges(a, oldKept),
+    new: changedRanges(b, newKept),
   };
 }
 
 /** Ranges of the tokens not kept, joined across whitespace so "a b" is one range, not two. */
-function changedRanges(tokens: string[], kept: Set<number>, ignoreWhitespace: boolean): Range[] {
+function changedRanges(tokens: string[], kept: Set<number>): Range[] {
   const ranges: Range[] = [];
   let offset = 0;
   let between = "";
   tokens.forEach((token, index) => {
     const start = offset;
     offset += token.length;
-    if (kept.has(index) || (ignoreWhitespace && isBlank(token))) {
+    // Whitespace is never marked: re-indented lines would otherwise light up at the margin.
+    if (kept.has(index) || isBlank(token)) {
       between += token;
       return;
     }

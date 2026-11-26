@@ -55,8 +55,6 @@ export type FileDiffProps = {
   view?: DiffView;
   /** Changes each time the file is opened from the sidebar, which expands it. */
   openRequest?: number;
-  /** Whitespace changes are hidden, so they aren't marked within lines either. */
-  ignoreWhitespace?: boolean;
   /** The file has changes, but only to whitespace, which are hidden. */
   whitespaceOnly?: boolean;
 };
@@ -86,7 +84,6 @@ export const FileDiff = memo(function FileDiff({
   hidden = false,
   view = "unified",
   openRequest = 0,
-  ignoreWhitespace = false,
   whitespaceOnly = false,
 }: FileDiffProps) {
   const sectionRef = useRef<HTMLElement>(null);
@@ -125,7 +122,7 @@ export const FileDiff = memo(function FileDiff({
     () => lines.reduce((max, line) => Math.max(max, columns(line.content)), 0),
     [lines],
   );
-  const changes = useMemo(() => intralineChanges(file, ignoreWhitespace), [file, ignoreWhitespace]);
+  const changes = useMemo(() => intralineChanges(file), [file]);
   const indexOf = useMemo(
     () => new Map(lines.map((line, index) => [posKey(linePos(line)), index])),
     [lines],

@@ -64,7 +64,7 @@
 }
 
 .filterToggle {
-  color: var(--muted-foreground);
+  color: var(--foreground);
 }
 
 .filterToggle[aria-pressed="true"] {
@@ -99,7 +99,7 @@
 }
 
 .dir {
-  color: var(--muted-foreground);
+  color: var(--foreground);
 }
 
 .dir svg {
@@ -127,7 +127,7 @@
 .dirName {
   min-width: 0;
   overflow: hidden;
-  color: var(--muted-foreground);
+  color: var(--foreground);
   font-size: 0.75rem;
   text-overflow: ellipsis;
   white-space: nowrap;
