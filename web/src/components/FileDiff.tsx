@@ -121,15 +121,10 @@ export const FileDiff = memo(function FileDiff({
     [rows, split],
   );
   const lines = useMemo(() => rowLines(rows), [rows]);
-  const widths = useMemo(() => {
-    const max = { old: 0, new: 0 };
-    for (const line of lines) {
-      const width = columns(line.content);
-      if (line.type !== "add") max.old = Math.max(max.old, width);
-      if (line.type !== "del") max.new = Math.max(max.new, width);
-    }
-    return max;
-  }, [lines]);
+  const lineCh = useMemo(
+    () => lines.reduce((max, line) => Math.max(max, columns(line.content)), 0),
+    [lines],
+  );
   const changes = useMemo(() => intralineChanges(file, ignoreWhitespace), [file, ignoreWhitespace]);
   const indexOf = useMemo(
     () => new Map(lines.map((line, index) => [posKey(linePos(line)), index])),
@@ -448,21 +443,15 @@ export const FileDiff = memo(function FileDiff({
             <div className={styles.scroll}>
               <table
                 className={cx(styles.table, split && styles.split, dragging && styles.dragging)}
-                style={
-                  {
-                    "--old-ch": widths.old,
-                    "--new-ch": widths.new,
-                    "--line-ch": Math.max(widths.old, widths.new),
-                  } as CSSProperties
-                }
+                style={{ "--line-ch": lineCh } as CSSProperties}
               >
                 <colgroup>
                   {split ? (
                     <>
                       <col className={styles.numCol} />
-                      <col className={styles.oldCol} />
+                      <col />
                       <col className={styles.numCol} />
-                      <col className={styles.newCol} />
+                      <col />
                     </>
                   ) : (
                     <>
