@@ -750,8 +750,11 @@ on each comment card. Its intro drops the line-number note for file-level commen
 - **Icons** are Lucide SVG paths inlined in `components/icons.tsx` (ISC licence).
 - **Fonts:** the system UI and monospace fonts, with the same stacks as GitHub; no web fonts.
 - **Layout:** a CSS grid with a sticky app header, a sticky scrollable sidebar and a main column.
-  File headers are sticky beneath the app header. File cards use `overflow: clip` (not `hidden`)
-  so rounded corners clip their content without breaking `position: sticky`. The file list and
+  File headers stick 1rem beneath the app header (matching the main column's padding). Each
+  header draws the card's top border and corners itself, so it keeps them when stuck, and a
+  page-coloured `::before` sticks behind it to hide the diff in the gap and beside its corners. The
+  file body uses `overflow: clip` (not `hidden`) so its rounded corners clip their content without
+  breaking `position: sticky`. The file list and
   comments panel widths are the `--sidebar-width` and `--comments-width` variables, set inline
   from remembered values. Each is resized by a `ResizeHandle` (a focusable `role="separator"` on
   the panel's inner edge) and clamped to at most 640 px while leaving the diff at least 480 px
