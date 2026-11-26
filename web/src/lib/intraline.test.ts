@@ -44,6 +44,7 @@ describe("compareLines", () => {
 
   test("does skip lines that have too little in common", () => {
     expect(changed("totally different", "nothing alike at all")).toBeNull();
+    expect(changed("    return total;", "  total() {")).toBeNull();
   });
 });
 

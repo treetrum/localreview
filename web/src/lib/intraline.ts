@@ -10,7 +10,7 @@ export type MarkedToken = Token & { changed?: boolean };
 /** Lines longer than this aren't compared; minified code would just be noise. */
 const MAX_LENGTH = 1000;
 /** Below this share of unchanged (non-whitespace) characters, the lines are too different. */
-const MIN_SIMILARITY = 0.4;
+const MIN_SIMILARITY = 0.5;
 /** Above this many deletion × addition pairs, runs fall back to pairing lines by position. */
 const MAX_MATCH_CELLS = 2500;
 

@@ -467,14 +467,14 @@ passed to every `FileDiff` as a prop.
 
 **Word highlights** (`lib/intraline.ts`): within each run of changes, `matchLines` pairs each
 deletion with the addition it most resembles, keeping both in order: a DP over every
-deletion × addition pair maximises the total similarity, counting only pairs that pass the 40% bar
+deletion × addition pair maximises the total similarity, counting only pairs that pass the 50% bar
 below. Pairing the nth deletion with the nth addition, as GitHub does, falls out of step as soon as
 a line is inserted in between, which is common once whitespace is hidden and a block is
 re-indented. Runs over 2,500 pairs fall back to that positional pairing. The split view uses the
 same pairs, so a line and the line it's compared with sit side by side. Both are split into words, spaces and
 punctuation, and an LCS of those tokens gives the changed character ranges, joined across
 whitespace. Whitespace itself is never marked, whether or not it's hidden: a re-indented line would
-otherwise light up at its margin, which says nothing the line's tint doesn't. Pairs are skipped when either line is over 1000 characters or less than 40% of their
+otherwise light up at its margin, which says nothing the line's tint doesn't. Pairs are skipped when either line is over 1000 characters or less than half of their
 non-whitespace text is shared, as highlighting most of a line adds nothing. `markTokens` splits the
 Shiki tokens (or the plain text) at the range boundaries and the changed parts render as `<mark>`.
 
