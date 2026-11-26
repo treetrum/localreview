@@ -10,6 +10,14 @@ describe("isTestPath", () => {
     "tests/integration/api.py",
     "src/__mocks__/fs.ts",
     "src/api.mock.ts",
+    "src/mock/server.ts",
+    "src/api-mock.ts",
+    "src/api-mocks.ts",
+    "src/mocks.ts",
+    "src/main/java/com/acme/UserServiceMock.java",
+    "app/src/test/kotlin/RepoMocks.kt",
+    "Sources/ClockFake.swift",
+    "Acme/OrderStub.cs",
     "web/src/test/fixtures.ts",
     "src/__snapshots__/App.test.tsx.snap",
     "pkg/server/server_test.go",
@@ -38,6 +46,11 @@ describe("isTestPath", () => {
     "docs/testing-guide.md",
     "vite.config.ts",
     "src/Button.stories.tsx",
+    "src/hammock.ts",
+    "src/Hammock.ts",
+    "src/mockData.ts",
+    "stubs/requests.pyi",
+    "src/fakes/clock.ts",
   ])("does not match %s when it's regular code", (path) => {
     expect(isTestPath(path)).toBe(false);
   });
