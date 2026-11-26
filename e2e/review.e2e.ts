@@ -102,7 +102,12 @@ test("scrolls a file into view when its sidebar link is clicked", async ({ page 
     .getByRole("link", { name: /README\.md/ })
     .click();
   await expect(readme).toBeInViewport();
-  await expect(page).toHaveURL(/#file-3$/);
+  await expect(page).toHaveURL(/#file-README\.md$/);
+});
+
+test("scrolls to the file in the URL hash once the diff has loaded", async ({ page }) => {
+  await page.goto("/#file-README.md");
+  await expect(section(page, "README.md")).toBeInViewport();
 });
 
 test("scrolls to a comment from the comments panel and resolves it", async ({ page }) => {

@@ -18,7 +18,7 @@ const actions: ReviewActions = {
 
 const defaultProps: FileDiffProps = {
   file: demoFile("src/server.ts"),
-  id: "file-0",
+  id: "file-src/server.ts",
   path: "src/server.ts",
   fingerprint: "fp-server",
   viewed: false,
@@ -307,6 +307,11 @@ describe("FileDiff", () => {
 
     await user.click(screen.getByRole("button", { name: "Collapse file" }));
     rerender(<FileDiff {...defaultProps} viewed openRequest={2} />);
+    expect(screen.getByRole("table")).toBeInTheDocument();
+  });
+
+  test("does start expanded when a viewed file is opened by the URL hash", () => {
+    render(<FileDiff {...defaultProps} viewed openRequest={1} />);
     expect(screen.getByRole("table")).toBeInTheDocument();
   });
 

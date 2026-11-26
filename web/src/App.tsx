@@ -147,7 +147,15 @@ function Review({ diff, error, refreshing, onRefresh, onTargetChange, onBaseChan
   const maxComments = panelMax(COMMENTS, windowWidth - (bothPanels ? sidebar : 0));
   const comments = clamp(commentsWidth, COMMENTS.min, maxComments);
   const [copied, copyText] = useCopy();
-  const [openRequest, setOpenRequest] = useState<{ path: string; seq: number } | null>(null);
+  // The browser looks for the URL's #file-… before the diff has loaded, so open and scroll to it
+  // on mount instead (this component mounts once the diff is in).
+  const [hashPath] = useState(() => {
+    const id = hashId(window.location.hash);
+    return diff.files.map(filePath).find((path) => fileElementId(path) === id) ?? null;
+  });
+  const [openRequest, setOpenRequest] = useState<{ path: string; seq: number } | null>(() =>
+    hashPath ? { path: hashPath, seq: 1 } : null,
+  );
   const openFile = useCallback(
     (path: string) => setOpenRequest((current) => ({ path, seq: (current?.seq ?? 0) + 1 })),
     [],
@@ -155,8 +163,9 @@ function Review({ diff, error, refreshing, onRefresh, onTargetChange, onBaseChan
 
   const tree = useMemo(() => buildTree(diff.files), [diff.files]);
   const files = useMemo(() => treeOrder(tree), [tree]);
+  // By path, not position, so a link still finds its file after the diff changes.
   const fileId = useMemo(
-    () => new Map(files.map((file, index) => [filePath(file), `file-${index}`])),
+    () => new Map(files.map((file) => [filePath(file), fileElementId(filePath(file))])),
     [files],
   );
   // Viewed marks and the copied review use the full diff, so they don't depend on the toggle.
@@ -217,27 +226,36 @@ function Review({ diff, error, refreshing, onRefresh, onTargetChange, onBaseChan
   const feedback = hasFeedback(review);
   const paths = useMemo(() => files.map(filePath), [files]);
 
-  // Scrolls to a comment once its file has been expanded (and unhidden) by the jump.
-  const [scrollTarget, setScrollTarget] = useState<{ id: string } | null>(null);
+  // Scrolls to an element once its file has been expanded (and unhidden) by the jump.
+  const [scrollTarget, setScrollTarget] = useState<ScrollTarget | null>(() =>
+    hashPath ? { id: fileElementId(hashPath), block: "start", focus: false } : null,
+  );
   useEffect(() => {
     if (!scrollTarget) return;
     const frame = requestAnimationFrame(() => {
-      const card = document.getElementById(commentElementId(scrollTarget.id));
-      card?.scrollIntoView?.({ block: "center" });
-      card?.focus({ preventScroll: true });
+      const element = document.getElementById(scrollTarget.id);
+      element?.scrollIntoView?.({ block: scrollTarget.block });
+      if (scrollTarget.focus) element?.focus({ preventScroll: true });
     });
     return () => cancelAnimationFrame(frame);
   }, [scrollTarget]);
 
-  const jumpToComment = useCallback(
-    (comment: ReviewComment) => {
-      if (!matchesQuery(comment.path, query)) setQuery("");
-      if (hideViewed && viewedPaths.has(comment.path)) setHideViewed(false);
-      if (hideTests && isTestPath(comment.path)) setHideTests(false);
-      openFile(comment.path);
-      setScrollTarget({ id: comment.id });
+  const revealFile = useCallback(
+    (path: string) => {
+      if (!matchesQuery(path, query)) setQuery("");
+      if (hideViewed && viewedPaths.has(path)) setHideViewed(false);
+      if (hideTests && isTestPath(path)) setHideTests(false);
+      openFile(path);
     },
     [query, hideViewed, viewedPaths, setHideViewed, hideTests, setHideTests, openFile],
+  );
+
+  const jumpToComment = useCallback(
+    (comment: ReviewComment) => {
+      revealFile(comment.path);
+      setScrollTarget({ id: commentElementId(comment.id), block: "center", focus: true });
+    },
+    [revealFile],
   );
 
   const copy = useCallback(
@@ -514,4 +532,16 @@ function groupByPath(
     }
   }
   return next;
+}
+
+const fileElementId = (path: string) => `file-${path}`;
+
+type ScrollTarget = { id: string; block: ScrollLogicalPosition; focus: boolean };
+
+function hashId(hash: string): string {
+  try {
+    return decodeURIComponent(hash.slice(1));
+  } catch {
+    return "";
+  }
 }
