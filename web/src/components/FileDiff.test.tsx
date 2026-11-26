@@ -42,7 +42,7 @@ describe("FileDiff", () => {
   test("does mark the words that changed within modified lines", () => {
     render(<FileDiff {...defaultProps} />);
     expect(marks("deleted line 6")).toEqual([]);
-    expect(marks("line 6")).toEqual(["async "]);
+    expect(marks("line 6")).toEqual(["async"]);
     expect(marks("deleted line 21")).toEqual(["old"]);
     expect(marks("line 23")).toEqual(["new"]);
     expect(marks("line 7")).toEqual([]);

@@ -4,8 +4,8 @@ import { parseDiff } from "../../../src/parse-diff";
 import { compareLines, intralineChanges, matchLines, markTokens, tokenRuns } from "./intraline";
 
 /** The changed text on each side, rather than offsets. */
-function changed(oldText: string, newText: string, ignoreWhitespace = false) {
-  const ranges = compareLines(oldText, newText, ignoreWhitespace);
+function changed(oldText: string, newText: string) {
+  const ranges = compareLines(oldText, newText);
   return (
     ranges && {
       old: ranges.old.map(([start, end]) => oldText.slice(start, end)),
@@ -23,7 +23,7 @@ describe("compareLines", () => {
   });
 
   test("does mark nothing on the side a word was only inserted into", () => {
-    expect(changed("fetch(req) {", "async fetch(req) {")).toEqual({ old: [], new: ["async "] });
+    expect(changed("fetch(req) {", "async fetch(req) {")).toEqual({ old: [], new: ["async"] });
   });
 
   test("does join changed words separated only by whitespace", () => {
@@ -33,9 +33,13 @@ describe("compareLines", () => {
     });
   });
 
-  test("does mark changed indentation unless whitespace is ignored", () => {
-    expect(changed("if (x) {", "  if (x) {")).toEqual({ old: [], new: ["  "] });
-    expect(changed("if (x) {", "  if (x) {", true)).toEqual({ old: [], new: [] });
+  test("does not mark whitespace when only the indentation changed", () => {
+    expect(changed("    }", "  }")).toEqual({ old: [], new: [] });
+    expect(changed("a  b", "a b")).toEqual({ old: [], new: [] });
+  });
+
+  test("does not mark the indentation when a re-indented line also changed", () => {
+    expect(changed("      total += x;", "    total = x;")).toEqual({ old: ["+"], new: [] });
   });
 
   test("does skip lines that have too little in common", () => {
@@ -90,7 +94,7 @@ describe("intralineChanges", () => {
       "",
     ].join("\n");
     const [file] = parseDiff(diff);
-    const changes = intralineChanges(file!, true);
+    const changes = intralineChanges(file!);
     const text = (key: string, lines: string[], line: number) =>
       changes.get(key)?.map(([start, end]) => lines[line - 1]!.slice(start, end));
     expect(text("old:1", reindented, 1)).toBeUndefined();
@@ -102,7 +106,7 @@ describe("intralineChanges", () => {
   test("does pair the nth deletion with the nth addition in each run of changes", () => {
     const changes = intralineChanges(demoFile("src/server.ts"));
     expect(Object.fromEntries(changes)).toEqual({
-      "new:6": [[4, 10]],
+      "new:6": [[4, 9]],
       "old:21": [[15, 18]],
       "new:23": [[15, 18]],
     });

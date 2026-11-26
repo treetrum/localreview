@@ -442,7 +442,6 @@ function Review({ diff, error, refreshing, onRefresh, onTargetChange, onBaseChan
               hidden={!visiblePaths.has(path)}
               view={view}
               openRequest={openRequest?.path === path ? openRequest.seq : 0}
-              ignoreWhitespace={ignoreWhitespace}
               whitespaceOnly={file.hunks.length === 0 && files[index]!.hunks.length > 0}
             />
           );

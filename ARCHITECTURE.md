@@ -473,7 +473,8 @@ a line is inserted in between, which is common once whitespace is hidden and a b
 re-indented. Runs over 2,500 pairs fall back to that positional pairing. The split view uses the
 same pairs, so a line and the line it's compared with sit side by side. Both are split into words, spaces and
 punctuation, and an LCS of those tokens gives the changed character ranges, joined across
-whitespace. Pairs are skipped when either line is over 1000 characters or less than 40% of their
+whitespace. Whitespace itself is never marked, whether or not it's hidden: a re-indented line would
+otherwise light up at its margin, which says nothing the line's tint doesn't. Pairs are skipped when either line is over 1000 characters or less than 40% of their
 non-whitespace text is shared, as highlighting most of a line adds nothing. `markTokens` splits the
 Shiki tokens (or the plain text) at the range boundaries and the changed parts render as `<mark>`.
 
@@ -481,8 +482,7 @@ Shiki tokens (or the plain text) at the range boundaries and the changed parts r
 `git diff -w`, see 5.3), so it's instant and matches git exactly. `Review` applies it only to the
 files passed to `FileDiff`; fingerprints, the sidebar and **Copy review** use the full diff, so
 toggling never changes viewed state. A comment on a deleted line that `-w` turns into context shows
-as outdated while whitespace is hidden. With whitespace hidden, word highlights ignore whitespace
-too.
+as outdated while whitespace is hidden.
 
 ### 7.5 Expanding context (`lib/expand.ts`)
 
