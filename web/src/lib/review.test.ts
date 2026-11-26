@@ -65,16 +65,15 @@ describe("fileFingerprint", () => {
 });
 
 describe("hasFeedback", () => {
-  test("does ignore blank summaries and comments", () => {
-    expect(hasFeedback({ summary: "  ", comments: [{ ...mockComment, body: " \n" }] })).toBe(false);
+  test("does ignore blank comments", () => {
+    expect(hasFeedback({ comments: [{ ...mockComment, body: " \n" }] })).toBe(false);
   });
 
-  test("does count a non-blank summary or comment", () => {
-    expect(hasFeedback({ summary: "ok", comments: [] })).toBe(true);
-    expect(hasFeedback({ summary: "", comments: [mockComment] })).toBe(true);
+  test("does count a non-blank comment", () => {
+    expect(hasFeedback({ comments: [mockComment] })).toBe(true);
   });
 
   test("does ignore resolved comments", () => {
-    expect(hasFeedback({ summary: "", comments: [{ ...mockComment, resolvedAt: 2 }] })).toBe(false);
+    expect(hasFeedback({ comments: [{ ...mockComment, resolvedAt: 2 }] })).toBe(false);
   });
 });

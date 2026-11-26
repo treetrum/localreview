@@ -6,10 +6,9 @@ export type ReviewActions = {
   updateComment: (id: string, body: string) => void;
   deleteComment: (id: string) => void;
   setResolved: (id: string, resolved: boolean) => void;
-  setSummary: (summary: string) => void;
   setViewed: (path: string, fingerprint: string | null) => void;
   clearViewed: () => void;
-  /** Removes the summary and comments but keeps viewed marks. */
+  /** Removes the comments but keeps viewed marks. */
   clear: () => void;
 };
 
@@ -22,7 +21,6 @@ function load(key: string): ReviewState {
     if (!saved || typeof saved !== "object") return empty;
     // Merge over the empty state so reviews saved by older versions still load.
     return {
-      summary: typeof saved.summary === "string" ? saved.summary : empty.summary,
       comments: Array.isArray(saved.comments) ? saved.comments : empty.comments,
       viewed: saved.viewed && typeof saved.viewed === "object" ? saved.viewed : empty.viewed,
     };
@@ -63,7 +61,6 @@ export function useReview(storageKey: string): { review: ReviewState; actions: R
             c.id === id ? { ...c, resolvedAt: resolved ? Date.now() : undefined } : c,
           ),
         })),
-      setSummary: (summary) => setReview((r) => ({ ...r, summary })),
       setViewed: (path, fingerprint) =>
         setReview((r) => {
           const viewed = { ...r.viewed };

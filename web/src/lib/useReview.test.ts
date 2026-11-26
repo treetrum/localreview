@@ -26,18 +26,18 @@ describe("useReview", () => {
 
   test("does restore saved state when mounted again", () => {
     const first = renderHook(() => useReview(KEY));
-    act(() => first.result.current.actions.setSummary("Looks good"));
+    act(() => first.result.current.actions.setViewed("a.ts", "fp1"));
     first.unmount();
 
     const { result } = renderHook(() => useReview(KEY));
-    expect(result.current.review.summary).toBe("Looks good");
+    expect(result.current.review.viewed).toEqual({ "a.ts": "fp1" });
   });
 
   test("does keep reviews separate when storage keys differ", () => {
     const a = renderHook(() => useReview(KEY));
-    act(() => a.result.current.actions.setSummary("A"));
+    act(() => a.result.current.actions.addComment(newComment));
     const b = renderHook(() => useReview(`${KEY}:other`));
-    expect(b.result.current.review.summary).toBe("");
+    expect(b.result.current.review.comments).toEqual([]);
   });
 
   test("does edit and delete a comment by id", () => {
@@ -81,37 +81,36 @@ describe("useReview", () => {
     const { result } = renderHook(() => useReview(KEY));
     act(() => {
       result.current.actions.addComment(newComment);
-      result.current.actions.setSummary("Summary");
       result.current.actions.setViewed("a.ts", "fp1");
     });
     act(() => result.current.actions.clear());
 
-    expect(result.current.review).toEqual({ summary: "", comments: [], viewed: { "a.ts": "fp1" } });
+    expect(result.current.review).toEqual({ comments: [], viewed: { "a.ts": "fp1" } });
     expect(saved()).toEqual(result.current.review);
   });
 
   test("does load reviews saved without viewed state", () => {
-    localStorage.setItem(KEY, JSON.stringify({ summary: "Old", comments: [mockComment] }));
+    localStorage.setItem(KEY, JSON.stringify({ comments: [mockComment] }));
     const { result } = renderHook(() => useReview(KEY));
-    expect(result.current.review).toEqual({ summary: "Old", comments: [mockComment], viewed: {} });
+    expect(result.current.review).toEqual({ comments: [mockComment], viewed: {} });
   });
 
   test("does start empty when saved data is corrupt", () => {
     localStorage.setItem(KEY, "{not json");
     const { result } = renderHook(() => useReview(KEY));
-    expect(result.current.review).toEqual({ summary: "", comments: [], viewed: {} });
+    expect(result.current.review).toEqual({ comments: [], viewed: {} });
   });
 
   test("does start empty when saved fields have the wrong types", () => {
-    localStorage.setItem(KEY, JSON.stringify({ summary: 1, comments: "x", viewed: null }));
+    localStorage.setItem(KEY, JSON.stringify({ comments: "x", viewed: null }));
     const { result } = renderHook(() => useReview(KEY));
-    expect(result.current.review).toEqual({ summary: "", comments: [], viewed: {} });
+    expect(result.current.review).toEqual({ comments: [], viewed: {} });
   });
 
   test("does keep actions stable across updates", () => {
     const { result } = renderHook(() => useReview(KEY));
     const { actions } = result.current;
-    act(() => actions.setSummary("changed"));
+    act(() => actions.setViewed("a.ts", "fp1"));
     expect(result.current.actions).toBe(actions);
   });
 });

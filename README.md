@@ -54,7 +54,7 @@ In the browser:
   range.
 - Click the arrows on a hunk header to show more unchanged lines around it, or **Expand all lines**
   in the file header to show the whole file. Expanded lines can be commented on too.
-- **Comment on file** for file-level feedback; **Overall feedback** for the whole change.
+- **Comment on file** for file-level feedback.
 - ⌘/Ctrl+↵ submits a comment, Esc cancels.
 - **Comments** in the header opens a panel listing every open comment with its file, line and
   snippet. Click one to jump to it; **Resolve** a comment once the agent has dealt with it.

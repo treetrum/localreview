@@ -47,8 +47,6 @@ test("copies drag-selected and deleted-line comments as exact Markdown", async (
   const clipboard = await page.evaluate(() => navigator.clipboard.readText());
   expect(clipboard).toBe(`# Code review: feature vs main
 
-Please address the following review feedback. Line numbers refer to the new version of each file unless marked as deleted.
-
 ## \`src/app.ts\`
 
 ### Line 2 (deleted)

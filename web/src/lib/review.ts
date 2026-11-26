@@ -20,13 +20,12 @@ export type ReviewComment = {
 export type NewComment = Omit<ReviewComment, "id" | "createdAt" | "resolvedAt">;
 
 export type ReviewState = {
-  summary: string;
   comments: ReviewComment[];
   /** path -> fingerprint of the diff when it was marked viewed */
   viewed: Record<string, string>;
 };
 
-export const emptyReview = (): ReviewState => ({ summary: "", comments: [], viewed: {} });
+export const emptyReview = (): ReviewState => ({ comments: [], viewed: {} });
 
 export function storageKey(diff: Pick<DiffResponse, "repoRoot" | "label">): string {
   return `localreview:${diff.repoRoot}:${diff.label}`;
@@ -53,12 +52,9 @@ export function rangeLabel(range: LineRange): string {
 
 export const isResolved = (comment: ReviewComment): boolean => comment.resolvedAt !== undefined;
 
-/** Whether there's anything to copy: a summary or an open, non-blank comment. */
-export function hasFeedback(review: Pick<ReviewState, "summary" | "comments">): boolean {
-  return (
-    review.summary.trim() !== "" ||
-    review.comments.some((c) => !isResolved(c) && c.body.trim() !== "")
-  );
+/** Whether there's anything to copy: an open, non-blank comment. */
+export function hasFeedback(review: Pick<ReviewState, "comments">): boolean {
+  return review.comments.some((c) => !isResolved(c) && c.body.trim() !== "");
 }
 
 /** A fast FNV-1a hash over everything that makes up a file's diff. */

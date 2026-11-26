@@ -45,12 +45,6 @@ A review looks like this:
 ````md
 # Code review: feature vs origin/main
 
-Please address the following review feedback. Line numbers refer to the new version of each file unless marked as deleted.
-
-## Overall
-
-Feedback on the change as a whole.
-
 ## `src/server.ts`
 
 A file-level comment (no line heading).
@@ -76,7 +70,6 @@ Extract the routing.
 
 - `# Code review: <label>` names the diff that was reviewed, e.g. `feature vs origin/main`,
   `Uncommitted changes on feature`, `Staged changes on feature` or a commit.
-- `## Overall` is feedback on the whole change; it's optional.
 - Each `` ## `path` `` section is one file. Text directly under it, before any `###`, is about the
   whole file.
 - `### Line N` / `### Lines A–B` are line numbers in the **new** version of the file.
@@ -86,7 +79,7 @@ Extract the routing.
 - The `diff` snippet is the code as it was **when the comment was written**, with `+`/`-`/space
   prefixes. Lines may have moved since, so locate the code by its content, not just the number.
 - A single comment can arrive on its own (copied with **Copy comment**): same shape, without the
-  title or overall section.
+  title.
 
 ## Acting on it
 

@@ -100,10 +100,7 @@ describe("CommentCard", () => {
     render(<CommentCard {...defaultProps} outdated />);
     await user.click(screen.getByRole("button", { name: "Copy comment" }));
     expect(screen.getByRole("button", { name: "Copied comment" })).toBeInTheDocument();
-    expect(await navigator.clipboard.readText())
-      .toBe(`Please address the following review comment. Line numbers refer to the new version of the file unless marked as deleted.
-
-## \`src/server.ts\`
+    expect(await navigator.clipboard.readText()).toBe(`## \`src/server.ts\`
 
 ### Line 6 (outdated)
 
