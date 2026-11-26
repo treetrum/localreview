@@ -556,7 +556,7 @@ too.
 - **Hide test files** removes paths matching `isTestPath` (`lib/tests.ts`) before the viewed
   filter, through the same mechanism. It's a path heuristic: test directories (`test`, `__tests__`,
   `spec`, `e2e`, `__mocks__`, `fixtures`, `testdata`, …) and file names across ecosystems
-  (`*.test.*`, `*.spec.*`, `*_test.go`, `test_*.py`, `FooTest.java`, `*.mock.*`, `*.snap`,
+  (`*.test.*`, `*.spec.*`, `*_test.go`, `test_*.py`, `FooTest.java`, `*.mock.*`, `*-mock.*`, `FooMock.java`, `FooFake.swift`, `*.snap`,
   `vitest.config.*`, …). Hidden test files still count towards progress and their comments are
   still copied. When every matching file is a test file, the diff shows **Show test files**.
 
