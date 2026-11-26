@@ -724,9 +724,12 @@ on each comment card. Its intro drops the line-number note for file-level commen
   is reproduced by hand.
 - **`web/src/styles/global.css`** holds:
   - shadcn's **zinc** design tokens in `oklch` (`--background`, `--foreground`, `--muted`,
-    `--border`, `--ring`, `--radius`, …) with a `prefers-color-scheme: dark` override;
-  - diff colours (`--diff-add`, `--diff-del`, `--diff-rename`, translucent backgrounds via
-    `color-mix`) and layout variables (`--header-height`, `--sidebar-width`);
+    `--border`, `--ring`, `--radius`, …) with a `prefers-color-scheme: dark` override. Text the
+    user reads (folder names, the diff picker, changed-line numbers) uses `--foreground`;
+    `--muted-foreground` is kept for secondary detail and is darker than shadcn's;
+  - diff colours (`--diff-add`, `--diff-del`, line, gutter, word, hunk and selection
+    backgrounds), copied from GitHub's Primer `diffBlob` tokens so diffs look the same as on
+    GitHub, and layout variables (`--header-height`, `--sidebar-width`);
   - a minimal reset and the Shiki token rules.
 - **Primitives** in `components/ui/` mirror shadcn's API and visuals: `Button` (variants
   `default | outline | secondary | ghost | destructive`, sizes `default | sm | xs | icon |
