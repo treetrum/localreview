@@ -70,18 +70,25 @@ describe("App", () => {
   test("does keep separate feedback for each diff", async () => {
     const { user, respond } = renderApp();
     await ready();
-    await user.type(screen.getByRole("textbox", { name: "Overall feedback" }), "Branch note");
+    await user.click(
+      within(section("src/server.ts")).getByRole("button", { name: "Comment on file" }),
+    );
+    await user.type(
+      within(section("src/server.ts")).getByRole("textbox", { name: "Comment" }),
+      "Branch note",
+    );
+    await user.click(within(section("src/server.ts")).getByRole("button", { name: "Comment" }));
 
     respond({ status: 200, body: { ...demoDiff, label: "Uncommitted changes on feature" } });
     await user.click(screen.getByRole("button", { name: "feature vs main" }));
     await user.click(screen.getByRole("button", { name: "Uncommitted changes" }));
     await screen.findByRole("button", { name: "Uncommitted changes on feature" });
-    expect(screen.getByRole("textbox", { name: "Overall feedback" })).toHaveValue("");
+    expect(within(section("src/server.ts")).queryByText("Branch note")).not.toBeInTheDocument();
 
     respond({ status: 200, body: demoDiff });
     window.history.back();
     await screen.findByRole("button", { name: "feature vs main" });
-    expect(screen.getByRole("textbox", { name: "Overall feedback" })).toHaveValue("Branch note");
+    expect(within(section("src/server.ts")).getByText("Branch note")).toBeInTheDocument();
   });
 
   test("does say so when there are no changes", async () => {
@@ -277,7 +284,6 @@ describe("App", () => {
     const copy = screen.getByRole("button", { name: "Copy review" });
     expect(copy).toBeDisabled();
 
-    await user.type(screen.getByLabelText("Overall feedback"), "Nice work.");
     const notes = section("docs/notes.md");
     await user.click(within(notes).getByRole("button", { name: "Comment on deleted line 1" }));
     await user.type(within(notes).getByRole("textbox", { name: "Comment" }), "Keep the title");
@@ -290,12 +296,6 @@ describe("App", () => {
     await user.click(copy);
     expect(screen.getByRole("button", { name: "Copied" })).toBeInTheDocument();
     expect(await navigator.clipboard.readText()).toBe(`# Code review: feature vs main
-
-Please address the following review feedback. Line numbers refer to the new version of each file unless marked as deleted.
-
-## Overall
-
-Nice work.
 
 ## \`docs/notes.md\`
 
@@ -377,15 +377,17 @@ Split this file
     vi.stubGlobal("confirm", confirm);
     const { user } = renderApp();
     await ready();
-    const summary = screen.getByLabelText("Overall feedback");
-    await user.type(summary, "Hmm");
-    await user.click(within(section("src/server.ts")).getByRole("checkbox", { name: "Viewed" }));
+    const server = section("src/server.ts");
+    await user.click(within(server).getByRole("button", { name: "Comment on file" }));
+    await user.type(within(server).getByRole("textbox", { name: "Comment" }), "Hmm");
+    await user.click(within(server).getByRole("button", { name: "Comment" }));
+    await user.click(within(section("docs/notes.md")).getByRole("checkbox", { name: "Viewed" }));
 
     await user.click(screen.getByRole("button", { name: "Clear" }));
-    expect(summary).toHaveValue("Hmm");
+    expect(within(server).getByText("Hmm")).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Clear" }));
-    expect(summary).toHaveValue("");
+    expect(within(server).queryByText("Hmm")).not.toBeInTheDocument();
     expect(confirm).toHaveBeenCalledTimes(2);
     expect(screen.getByText("1/4 viewed")).toBeInTheDocument();
   });

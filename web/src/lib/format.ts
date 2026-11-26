@@ -13,16 +13,11 @@ export type FormatInput = {
   label: string;
   /** In display (tree) order. */
   files: DiffFile[];
-  summary: string;
   comments: ReviewComment[];
 };
 
-const INTRO =
-  "Please address the following review feedback. Line numbers refer to the new version of each file unless marked as deleted.";
-
-export function formatReview({ label, files, summary, comments }: FormatInput): string {
-  const sections = [`# Code review: ${label}`, INTRO];
-  if (summary.trim()) sections.push("## Overall", summary.trim());
+export function formatReview({ label, files, comments }: FormatInput): string {
+  const sections = [`# Code review: ${label}`];
 
   const byPath = new Map<string, ReviewComment[]>();
   for (const comment of comments) {
@@ -60,10 +55,7 @@ export function formatReview({ label, files, summary, comments }: FormatInput): 
 
 /** One comment on its own, to hand a single piece of feedback to the agent. */
 export function formatComment(comment: ReviewComment, outdated = false): string {
-  const intro = comment.range
-    ? "Please address the following review comment. Line numbers refer to the new version of the file unless marked as deleted."
-    : "Please address the following review comment.";
-  const sections = [intro, `## ${inlineCode(comment.path)}`, ...commentSections(comment, outdated)];
+  const sections = [`## ${inlineCode(comment.path)}`, ...commentSections(comment, outdated)];
   return `${sections.join("\n\n")}\n`;
 }
 

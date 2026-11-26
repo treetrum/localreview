@@ -11,11 +11,10 @@ const comment = (overrides: Partial<ReviewComment>): ReviewComment => ({
 });
 
 describe("formatReview", () => {
-  test("does format the summary, file comments and line comments with snippets", () => {
+  test("does format file comments and line comments with snippets", () => {
     const markdown = formatReview({
       label: "feature vs main",
       files,
-      summary: "  Nice work.  ",
       comments: [
         comment({
           id: "range",
@@ -50,12 +49,6 @@ describe("formatReview", () => {
 
     expect(markdown).toBe(`# Code review: feature vs main
 
-Please address the following review feedback. Line numbers refer to the new version of each file unless marked as deleted.
-
-## Overall
-
-Nice work.
-
 ## \`src/server.ts\`
 
 File-level comment first.
@@ -84,7 +77,6 @@ Extract the routing.
     const markdown = formatReview({
       label: "x",
       files,
-      summary: "",
       comments: [
         comment({ id: "1", path: "zzz/gone.ts", range: null, body: "gone b" }),
         comment({ id: "2", path: "src/server.ts", range: null, body: "server" }),
@@ -105,7 +97,6 @@ Extract the routing.
     const markdown = formatReview({
       label: "x",
       files,
-      summary: "",
       comments: [
         comment({ id: "b", body: "second", createdAt: 20 }),
         comment({ id: "a", body: "first", createdAt: 10 }),
@@ -118,7 +109,6 @@ Extract the routing.
     const markdown = formatReview({
       label: "x",
       files,
-      summary: "",
       comments: [
         comment({ range: { start: { side: "new", line: 99 }, end: { side: "new", line: 99 } } }),
       ],
@@ -133,7 +123,6 @@ Extract the routing.
     const markdown = formatReview({
       label: "x",
       files: withContent,
-      summary: "",
       comments: [
         comment({
           range: { start: { side: "new", line: 30 }, end: { side: "new", line: 30 } },
@@ -151,7 +140,6 @@ Extract the routing.
     const markdown = formatReview({
       label: "x",
       files,
-      summary: "",
       comments: [comment({ snippet: [{ type: "context", content: "const s = ````;" }] })],
     });
     expect(markdown).toContain("`````diff\n const s = ````;\n`````");
@@ -161,31 +149,22 @@ Extract the routing.
     const markdown = formatReview({
       label: "x",
       files,
-      summary: "",
       comments: [comment({ body: "Done already", resolvedAt: 2 }), comment({ id: "c2" })],
     });
     expect(markdown).not.toContain("Done already");
     expect(markdown).toContain("src/server.ts");
   });
 
-  test("does skip blank comments and a blank summary", () => {
-    const markdown = formatReview({
-      label: "x",
-      files,
-      summary: " ",
-      comments: [comment({ body: "  " })],
-    });
-    expect(markdown).not.toContain("## Overall");
+  test("does skip blank comments", () => {
+    const markdown = formatReview({ label: "x", files, comments: [comment({ body: "  " })] });
     expect(markdown).not.toContain("src/server.ts");
   });
 });
 
 describe("formatComment", () => {
-  test("does omit the line-number note when the comment is on the whole file", () => {
+  test("does format a comment on the whole file without a range heading", () => {
     expect(formatComment(comment({ range: null, snippet: [], body: " Split this. " })))
-      .toBe(`Please address the following review comment.
-
-## \`src/server.ts\`
+      .toBe(`## \`src/server.ts\`
 
 Split this.
 `);

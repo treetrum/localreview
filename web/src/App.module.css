@@ -125,15 +125,6 @@
   color: var(--destructive);
 }
 
-.summary {
-  display: grid;
-  gap: 0.375rem;
-}
-
-.summaryLabel {
-  font-weight: 500;
-}
-
 .empty {
   display: grid;
   justify-items: center;

@@ -19,7 +19,6 @@ import {
 import { Button } from "./components/ui/Button";
 import { Progress } from "./components/ui/Progress";
 import { ResizeHandle } from "./components/ui/ResizeHandle";
-import { Textarea } from "./components/ui/Textarea";
 import { ToggleGroup } from "./components/ui/ToggleGroup";
 import { matchesQuery } from "./lib/filter";
 import { isTestPath } from "./lib/tests";
@@ -259,20 +258,12 @@ function Review({ diff, error, refreshing, onRefresh, onTargetChange, onBaseChan
   );
 
   const copy = useCallback(
-    () =>
-      copyText(
-        formatReview({
-          label: diff.label,
-          files,
-          summary: review.summary,
-          comments: review.comments,
-        }),
-      ),
-    [copyText, diff.label, files, review.summary, review.comments],
+    () => copyText(formatReview({ label: diff.label, files, comments: review.comments })),
+    [copyText, diff.label, files, review.comments],
   );
 
   const clear = () => {
-    if (window.confirm("Clear all comments and overall feedback? Viewed files stay marked.")) {
+    if (window.confirm("Clear all comments? Viewed files stay marked.")) {
       actions.clear();
     }
   };
@@ -406,18 +397,6 @@ function Review({ diff, error, refreshing, onRefresh, onTargetChange, onBaseChan
             <TriangleAlert size={16} /> Couldn't load the diff: {error}
           </p>
         )}
-        <section className={styles.summary}>
-          <label htmlFor="overall-feedback" className={styles.summaryLabel}>
-            Overall feedback
-          </label>
-          <Textarea
-            id="overall-feedback"
-            placeholder="Feedback on the change as a whole"
-            value={review.summary}
-            onChange={(event) => actions.setSummary(event.target.value)}
-          />
-        </section>
-
         {files.length === 0 ? (
           <p className={styles.empty}>No changes for {diff.label}.</p>
         ) : matchingPaths.length === 0 ? (

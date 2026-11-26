@@ -31,7 +31,7 @@ see [`AGENTS.md`](AGENTS.md); for usage see [`README.md`](README.md).
 ## 1. Purpose
 
 localreview is a small command-line tool that starts a local web server for reviewing a git diff
-in the browser. You leave comments on lines, line ranges, whole files, or the change overall, then
+in the browser. You leave comments on lines, line ranges or whole files, then
 copy them as one Markdown document to paste into an AI coding agent, which responds and fixes the
 feedback.
 
@@ -53,28 +53,28 @@ diff changed is automatically un-marked as viewed.
 
 ## 2. Features
 
-| Area                          | Behaviour                                                                                                                                                                                                                                                                                                                                                     |
-| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Diff picker**               | Click the diff label in the header to switch: branch vs any base branch (default: `origin/main`, else `main`), uncommitted, staged, one commit, or a range (shift-click). In the URL.                                                                                                                                                                         |
-| **Diff view**                 | **Unified** or **split** (side by side, like GitHub), toggled in the header and remembered. Hunk headers, line numbers, long lines scroll sideways (unified) or wrap (split), sticky headers, highlighting.                                                                                                                                                   |
-| **Word highlights**           | Within a modified line, the words that changed get a stronger highlight on top of the line's tint, like GitHub.                                                                                                                                                                                                                                               |
-| **Hide whitespace**           | A header toggle (remembered) that hides whitespace-only changes across the diff, like `git diff -w`. Files with nothing else changed say so.                                                                                                                                                                                                                  |
-| **Expand context**            | Hunk headers carry GitHub-style expand buttons: 20 lines up or down, or all of a gap of 20 or fewer. **Expand all lines** in the file header shows the whole file.                                                                                                                                                                                            |
-| **Line comments**             | Hover a line and click **+**. Drag across rows, or shift-click a second **+**, for a range. Comments on deleted lines are anchored to the old side.                                                                                                                                                                                                           |
-| **File and overall comments** | **Comment on file** per file; an **Overall feedback** box for the whole change.                                                                                                                                                                                                                                                                               |
-| **Editing**                   | Edit, delete or copy comments. **Copy comment** copies just that one as Markdown feedback. ⌘/Ctrl+↵ submits, Esc cancels.                                                                                                                                                                                                                                     |
-| **Comments panel**            | **Comments** in the header toggles a right-hand panel (remembered) listing open or resolved comments by file, each with its line range, the last lines of its snippet (dedented, scrolling sideways if long) and its body. Clicking one scrolls to it in the diff. Resizable from its left edge, like the sidebar.                                            |
-| **Resolve comments**          | Resolve a comment from its card or the panel once it's been dealt with. Resolved comments shrink to one line in the diff, are left out of **Copy review** and sidebar counts, and can be reopened.                                                                                                                                                            |
-| **Outdated comments**         | If a commented line disappears after a refresh, the comment moves to the top of the file with an _Outdated_ badge. It's still included when copying.                                                                                                                                                                                                          |
-| **Copy review**               | Formats all feedback as Markdown (with `diff` snippets) and copies it to the clipboard.                                                                                                                                                                                                                                                                       |
-| **Copy file path**            | An icon button beside each file's path copies it (the new path for renames) to the clipboard.                                                                                                                                                                                                                                                                 |
-| **Persistence**               | Comments, summary and viewed state are saved in `localStorage` per repo and diff target. **Clear** removes feedback but keeps viewed state.                                                                                                                                                                                                                   |
-| **Viewed tracking**           | A per-file **Viewed** checkbox collapses the file. A progress bar in the header shows _x/y viewed_. Viewed marks reset automatically when a file's diff changes. **Mark all as unviewed** (after a confirm) resets them all.                                                                                                                                  |
-| **File navigation**           | Sidebar with **tree** view (collapsible folders, single-child chains compressed like `src/components`) or **list** view (filename + directory). The choice is remembered. Clicking a file scrolls to it and expands it if collapsed. Drag the sidebar's edge (or focus it and use the arrow keys) to resize it; double-click resets. The width is remembered. |
-| **Filter**                    | Path search (case-insensitive; space-separated terms must all match) that narrows both the sidebar and the diff. Debounced; `/` focuses it, Esc clears it.                                                                                                                                                                                                    |
-| **Hide viewed files**         | A sidebar toggle that hides viewed files from both the sidebar and the diff, so only what's left to review shows. Remembered across reloads.                                                                                                                                                                                                                  |
-| **Hide test files**           | A sidebar toggle that hides test and test support files (specs, `__tests__`, mocks, fixtures, snapshots, test config) from the sidebar and diff. Remembered across reloads.                                                                                                                                                                                   |
-| **Refresh**                   | Reloads the diff from git without restarting.                                                                                                                                                                                                                                                                                                                 |
+| Area                  | Behaviour                                                                                                                                                                                                                                                                                                                                                     |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Diff picker**       | Click the diff label in the header to switch: branch vs any base branch (default: `origin/main`, else `main`), uncommitted, staged, one commit, or a range (shift-click). In the URL.                                                                                                                                                                         |
+| **Diff view**         | **Unified** or **split** (side by side, like GitHub), toggled in the header and remembered. Hunk headers, line numbers, long lines scroll sideways (unified) or wrap (split), sticky headers, highlighting.                                                                                                                                                   |
+| **Word highlights**   | Within a modified line, the words that changed get a stronger highlight on top of the line's tint, like GitHub.                                                                                                                                                                                                                                               |
+| **Hide whitespace**   | A header toggle (remembered) that hides whitespace-only changes across the diff, like `git diff -w`. Files with nothing else changed say so.                                                                                                                                                                                                                  |
+| **Expand context**    | Hunk headers carry GitHub-style expand buttons: 20 lines up or down, or all of a gap of 20 or fewer. **Expand all lines** in the file header shows the whole file.                                                                                                                                                                                            |
+| **Line comments**     | Hover a line and click **+**. Drag across rows, or shift-click a second **+**, for a range. Comments on deleted lines are anchored to the old side.                                                                                                                                                                                                           |
+| **File comments**     | **Comment on file** per file.                                                                                                                                                                                                                                                                                                                                 |
+| **Editing**           | Edit, delete or copy comments. **Copy comment** copies just that one as Markdown feedback. ⌘/Ctrl+↵ submits, Esc cancels.                                                                                                                                                                                                                                     |
+| **Comments panel**    | **Comments** in the header toggles a right-hand panel (remembered) listing open or resolved comments by file, each with its line range, the last lines of its snippet (dedented, scrolling sideways if long) and its body. Clicking one scrolls to it in the diff. Resizable from its left edge, like the sidebar.                                            |
+| **Resolve comments**  | Resolve a comment from its card or the panel once it's been dealt with. Resolved comments shrink to one line in the diff, are left out of **Copy review** and sidebar counts, and can be reopened.                                                                                                                                                            |
+| **Outdated comments** | If a commented line disappears after a refresh, the comment moves to the top of the file with an _Outdated_ badge. It's still included when copying.                                                                                                                                                                                                          |
+| **Copy review**       | Formats all feedback as Markdown (with `diff` snippets) and copies it to the clipboard.                                                                                                                                                                                                                                                                       |
+| **Copy file path**    | An icon button beside each file's path copies it (the new path for renames) to the clipboard.                                                                                                                                                                                                                                                                 |
+| **Persistence**       | Comments and viewed state are saved in `localStorage` per repo and diff target. **Clear** removes feedback but keeps viewed state.                                                                                                                                                                                                                            |
+| **Viewed tracking**   | A per-file **Viewed** checkbox collapses the file. A progress bar in the header shows _x/y viewed_. Viewed marks reset automatically when a file's diff changes. **Mark all as unviewed** (after a confirm) resets them all.                                                                                                                                  |
+| **File navigation**   | Sidebar with **tree** view (collapsible folders, single-child chains compressed like `src/components`) or **list** view (filename + directory). The choice is remembered. Clicking a file scrolls to it and expands it if collapsed. Drag the sidebar's edge (or focus it and use the arrow keys) to resize it; double-click resets. The width is remembered. |
+| **Filter**            | Path search (case-insensitive; space-separated terms must all match) that narrows both the sidebar and the diff. Debounced; `/` focuses it, Esc clears it.                                                                                                                                                                                                    |
+| **Hide viewed files** | A sidebar toggle that hides viewed files from both the sidebar and the diff, so only what's left to review shows. Remembered across reloads.                                                                                                                                                                                                                  |
+| **Hide test files**   | A sidebar toggle that hides test and test support files (specs, `__tests__`, mocks, fixtures, snapshots, test config) from the sidebar and diff. Remembered across reloads.                                                                                                                                                                                   |
+| **Refresh**           | Reloads the diff from git without restarting.                                                                                                                                                                                                                                                                                                                 |
 
 ---
 
@@ -369,7 +369,6 @@ App                              diff request (URL), load states (loading / erro
     │   ├── ToggleGroup          tree ⇄ list (persisted)
     │   └── Tree / list → FileRow
     ├── main
-    │   ├── Overall feedback (Textarea)
     │   └── FileDiff × N  (memo)  header (collapse, status, path, copy path, stats, expand all, Comment on file, Viewed)
     │                             file / outdated comments, file draft
     │                             table: gap rows (expand buttons, hunk header), line rows (+ button), comment rows / form
@@ -390,7 +389,7 @@ a stale link (e.g. a commit that's been rebased away) isn't a dead end.
 | ------------------------------------------------- | ------------------------------- | ------------------------------------------------ |
 | Diff request (target, base)                       | `useDiffRequest` (in `App`)     | URL query string (history entries)               |
 | Diff data, loading/error/refreshing               | `useDiff` (in `App`)            | no (refetched)                                   |
-| Comments, summary, viewed marks                   | `useReview` (in `Review`)       | `localStorage["localreview:<repoRoot>:<label>"]` |
+| Comments, viewed marks                            | `useReview` (in `Review`)       | `localStorage["localreview:<repoRoot>:<label>"]` |
 | Applied filter query                              | `Review`                        | no                                               |
 | Hide viewed files                                 | `Review` via `useLocalStorage`  | `localStorage["localreview:hideViewed"]`         |
 | Hide test files                                   | `Review` via `useLocalStorage`  | `localStorage["localreview:hideTests"]`          |
@@ -622,7 +621,7 @@ type ReviewComment = {
   createdAt: number;
   resolvedAt?: number; // set when resolved; absent = open
 };
-type ReviewState = { summary: string; comments: ReviewComment[]; viewed: Record<string, string> };
+type ReviewState = { comments: ReviewComment[]; viewed: Record<string, string> };
 ```
 
 `useReview(storageKey)`:
@@ -635,7 +634,7 @@ type ReviewState = { summary: string; comments: ReviewComment[]; viewed: Record<
   `FileDiff` memoisation.
 - `setResolved(id, resolved)` sets or clears `resolvedAt`. Comments saved before resolving existed
   have no `resolvedAt`, so they load as open.
-- `clear()` resets summary and comments (resolved ones too) but **keeps `viewed`**: clearing feedback after pasting it
+- `clear()` resets comments (resolved ones too) but **keeps `viewed`**: clearing feedback after pasting it
   into an agent isn't the same as forgetting what you've reviewed.
 
 **Why the browser holds state:** the server stays trivial and stateless, refreshes and restarts
@@ -646,16 +645,10 @@ repo root and target label, so different repos and targets don't collide.
 
 ## 9. Copied review format
 
-`formatReview({ label, files, summary, comments })` in `web/src/lib/format.ts`:
+`formatReview({ label, files, comments })` in `web/src/lib/format.ts`:
 
 ````md
 # Code review: feature vs main
-
-Please address the following review feedback. Line numbers refer to the new version of each file unless marked as deleted.
-
-## Overall
-
-Nice work.
 
 ## `src/server.ts`
 
@@ -697,8 +690,8 @@ Rules:
 receiving it, so keep it in sync when the format changes.
 
 `formatComment(comment, outdated)` formats one comment the same way (its file heading, range
-heading and snippet, without the review title or overall feedback) for the **Copy comment** button
-on each comment card. Its intro drops the line-number note for file-level comments.
+heading and snippet, without the review title) for the **Copy comment** button
+on each comment card.
 
 ---
 
