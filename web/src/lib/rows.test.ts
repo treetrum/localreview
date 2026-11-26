@@ -1,4 +1,5 @@
 import { describe, expect, test } from "vitest";
+import { parseDiff } from "../../../src/parse-diff";
 import { demoFile, demoServerContent } from "../test/fixtures";
 import { buildRows, type Span } from "./expand";
 import { splitRows, type LineRow, type SplitRow } from "./rows";
@@ -29,6 +30,31 @@ describe("splitRows", () => {
       ["10 context 20/22", "10 context 20/22"],
       ["11 del 21/-", "12 add -/23"],
       ["13 context 22/24", "13 context 22/24"],
+    ]);
+  });
+
+  test("does put edited lines side by side when lines were inserted between them", () => {
+    const [file] = parseDiff(
+      [
+        "diff --git a/a.ts b/a.ts",
+        "--- a/a.ts",
+        "+++ b/a.ts",
+        "@@ -1,2 +1,4 @@",
+        '-const name = "old";',
+        "-const value = 1;",
+        "+const added = true;",
+        '+const name = "new";',
+        "+const other = false;",
+        "+const value = 2;",
+        "",
+      ].join("\n"),
+    );
+    expect(shape(splitRows(buildRows(file!, [])))).toEqual([
+      "@@ -1,2 +1,4 @@",
+      [null, "2 add -/1"],
+      ["0 del 1/-", "3 add -/2"],
+      [null, "4 add -/3"],
+      ["1 del 2/-", "5 add -/4"],
     ]);
   });
 

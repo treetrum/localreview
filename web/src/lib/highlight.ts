@@ -56,7 +56,7 @@ let highlighter: Promise<HighlighterCore> | null = null;
 
 function getHighlighter(): Promise<HighlighterCore> {
   highlighter ??= createHighlighterCore({
-    themes: [bundledThemes["github-light"](), bundledThemes["github-dark"]()],
+    themes: [bundledThemes["github-light-default"](), bundledThemes["github-dark-default"]()],
     langs: [],
     engine: createJavaScriptRegexEngine({ forgiving: true }),
   });
@@ -74,7 +74,7 @@ async function ensureLanguage(core: HighlighterCore, lang: string): Promise<void
 function toTokens(core: HighlighterCore, code: string, lang: string): Token[][] {
   const { tokens } = core.codeToTokens(code, {
     lang,
-    themes: { light: "github-light", dark: "github-dark" },
+    themes: { light: "github-light-default", dark: "github-dark-default" },
     defaultColor: false,
     tokenizeMaxLineLength: 2000,
   });

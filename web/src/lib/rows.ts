@@ -1,4 +1,5 @@
 import type { DiffRow } from "./expand";
+import { matchLines } from "./intraline";
 import { linePos, posKey } from "./review";
 
 export type DiffView = "unified" | "split";
@@ -12,16 +13,25 @@ export type SplitRow = GapRow | PairRow;
 
 /**
  * Old lines on the left, new lines on the right. Context lines appear on both sides; within each
- * run of changes the nth deletion is paired with the nth addition, like GitHub's split view.
+ * run of changes, lines `matchLines` pairs share a row, and the rest fill rows between them in order.
  */
 export function splitRows(rows: DiffRow[]): SplitRow[] {
   const result: SplitRow[] = [];
   let dels: LineRow[] = [];
   let adds: LineRow[] = [];
   const flush = () => {
-    for (let i = 0; i < Math.max(dels.length, adds.length); i++) {
-      result.push(pair(dels[i] ?? null, adds[i] ?? null));
+    let i = 0;
+    let j = 0;
+    const fill = (endI: number, endJ: number) => {
+      while (i < endI || j < endJ) {
+        result.push(pair(i < endI ? dels[i++]! : null, j < endJ ? adds[j++]! : null));
+      }
+    };
+    for (const [matchI, matchJ] of matchLines(dels.map(content), adds.map(content))) {
+      fill(matchI, matchJ);
+      result.push(pair(dels[i++]!, adds[j++]!));
     }
+    fill(dels.length, adds.length);
     dels = [];
     adds = [];
   };
@@ -36,6 +46,8 @@ export function splitRows(rows: DiffRow[]): SplitRow[] {
   flush();
   return result;
 }
+
+const content = (row: LineRow) => row.line.content;
 
 function pair(left: LineRow | null, right: LineRow | null): PairRow {
   const key = [left, right].map((side) => (side ? posKey(linePos(side.line)) : "")).join("|");
