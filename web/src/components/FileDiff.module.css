@@ -13,7 +13,6 @@
   top: var(--header-height);
   z-index: 2;
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
   gap: 0.5rem;
   min-height: 2.75rem;
@@ -22,7 +21,25 @@
   background: var(--muted);
 }
 
-.path {
+/* Everything left of the actions. Stays on one line; only the path gives way. */
+.title {
+  display: flex;
+  flex: 0 1 auto;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.title > * {
+  flex-shrink: 0;
+}
+
+/*
+ * Truncated from the start, so the file name stays visible. The rtl direction puts the ellipsis
+ * on the left; the <bdi> inside keeps the path itself reading left to right.
+ */
+.title > .path {
+  flex-shrink: 1;
   min-width: 0;
   overflow: hidden;
   font-family: var(--font-mono);
@@ -51,6 +68,7 @@
 
 .headerActions {
   display: flex;
+  flex-shrink: 0;
   align-items: center;
   gap: 0.75rem;
   margin-left: auto;
@@ -58,6 +76,10 @@
 
 /* On narrow screens the actions get their own row, so the path isn't squeezed to nothing. */
 @media (max-width: 760px) {
+  .header {
+    flex-wrap: wrap;
+  }
+
   .headerActions {
     flex-basis: 100%;
     justify-content: flex-end;
