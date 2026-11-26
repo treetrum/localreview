@@ -22,7 +22,7 @@ const defaultProps: FileNavProps = {
   onHideViewedChange,
   hideTests: false,
   onHideTestsChange,
-  fileId: new Map(files.map((file, i) => [file.newPath, `file-${i}`])),
+  fileId: new Map(files.map((file) => [file.newPath, `file-${file.newPath}`])),
   viewed: new Set(),
   commentCounts: new Map(),
   onFileOpen,
@@ -36,7 +36,7 @@ describe("FileNav", () => {
     render(<FileNav {...defaultProps} />);
     const src = screen.getByRole("button", { name: "src" });
     expect(src).toHaveAttribute("aria-expanded", "true");
-    expect(link(/server\.ts/)).toHaveAttribute("href", "#file-3");
+    expect(link(/server\.ts/)).toHaveAttribute("href", "#file-src/server.ts");
 
     await user.click(src);
     expect(src).toHaveAttribute("aria-expanded", "false");

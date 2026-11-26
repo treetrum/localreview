@@ -93,7 +93,7 @@ export const FileDiff = memo(function FileDiff({
   const highlighted = useHighlightedFile(sectionRef, file);
 
   // Follow `viewed` when it changes, but let the user expand a viewed file manually.
-  const [collapsed, setCollapsed] = useState(viewed);
+  const [collapsed, setCollapsed] = useState(viewed && !openRequest);
   const [prevViewed, setPrevViewed] = useState(viewed);
   if (viewed !== prevViewed) {
     setPrevViewed(viewed);

@@ -71,7 +71,7 @@ export const FileNav = memo(function FileNav({
       <FileRow
         key={path}
         file={file}
-        href={`#${fileId.get(path) ?? ""}`}
+        href={`#${encodeURI(fileId.get(path) ?? "")}`}
         depth={depth}
         showDir={showDir}
         viewed={viewed.has(path)}

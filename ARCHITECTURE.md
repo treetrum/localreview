@@ -400,7 +400,7 @@ a stale link (e.g. a commit that's been rebased away) isn't a dead end.
 | Hide whitespace                                   | `Review` via `useLocalStorage`  | `localStorage["localreview:hideWhitespace"]`     |
 | Comments panel open                               | `Review` via `useLocalStorage`  | `localStorage["localreview:commentsPanel"]`      |
 | Open ⇄ Resolved tab                               | `CommentsPanel`                 | no                                               |
-| Comment to scroll to after a jump                 | `Review`                        | no                                               |
+| Comment or file to scroll to after a jump or load | `Review`                        | no                                               |
 | Collapsed folders                                 | `Tree`                          | no                                               |
 | Collapsed file, line selection, drag, file draft  | `FileDiff`                      | no                                               |
 | Revealed context lines                            | `FileDiff`                      | no (lines with comments are always revealed)     |
@@ -524,6 +524,10 @@ too.
   prop; a change expands the file (same "adjust state on prop change" pattern), so clicking the
   same file again after collapsing it expands it again. Only the opened file's prop changes, so
   memoised `FileDiff`s elsewhere don't re-render.
+- Each file's anchor is `#file-<path>` (by path, so a link survives the diff changing). The
+  browser looks for the URL's anchor before the diff has loaded and finds nothing, so `Review`,
+  which mounts once the diff is in, starts with that file as its `openRequest` and scroll target.
+  A viewed file opened this way starts expanded.
 - **Mark all as unviewed** (`actions.clearViewed`, behind a confirm) empties `viewed`, which
   expands every file through the sync above.
 - When collapsing a file whose top has scrolled above the viewport, the view scrolls back to its
