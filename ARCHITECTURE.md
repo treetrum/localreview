@@ -452,8 +452,9 @@ with sibling folder icons rather than chevrons.
 
 `buildRows` (see 7.5) gives one row per line, which the unified view renders directly. For the
 split view, `splitRows` in `lib/rows.ts` regroups those rows into old/new pairs: context and
-expanded lines appear on both sides and, within each run of changes, the nth deletion is paired
-with the nth addition; the shorter side gets empty cells. Gap rows pass through unchanged, so
+expanded lines appear on both sides and, within each run of changes, lines that `matchLines` pairs
+(see 7.4.2) share a row; the unpaired lines between them fill rows in order, and the shorter side
+gets empty cells. Gap rows pass through unchanged, so
 expanding context works the same in both views. Selection, drag, comment payloads and the copied
 Markdown don't depend on the view, and switching views keeps an open selection.
 
@@ -464,8 +465,13 @@ passed to every `FileDiff` as a prop.
 
 ### 7.4.2 Word highlights and hiding whitespace
 
-**Word highlights** (`lib/intraline.ts`): within each run of changes, the nth deletion is compared
-with the nth addition (the same pairing as the split view). Both are split into words, spaces and
+**Word highlights** (`lib/intraline.ts`): within each run of changes, `matchLines` pairs each
+deletion with the addition it most resembles, keeping both in order: a DP over every
+deletion × addition pair maximises the total similarity, counting only pairs that pass the 40% bar
+below. Pairing the nth deletion with the nth addition, as GitHub does, falls out of step as soon as
+a line is inserted in between, which is common once whitespace is hidden and a block is
+re-indented. Runs over 2,500 pairs fall back to that positional pairing. The split view uses the
+same pairs, so a line and the line it's compared with sit side by side. Both are split into words, spaces and
 punctuation, and an LCS of those tokens gives the changed character ranges, joined across
 whitespace. Pairs are skipped when either line is over 1000 characters or less than 40% of their
 non-whitespace text is shared, as highlighting most of a line adds nothing. `markTokens` splits the
@@ -694,7 +700,7 @@ on each comment card. Its intro drops the line-number note for file-level commen
 ## 10. Syntax highlighting
 
 - **Engine:** Shiki **core** with the **JavaScript regex engine** (`forgiving: true`), so no
-  Oniguruma WASM, plus the `github-light` and `github-dark` themes.
+  Oniguruma WASM, plus the `github-light-default` and `github-dark-default` themes (GitHub's current colours).
 - **Languages** are detected from the filename: a few special names (`Dockerfile`, `Makefile`,
   `.env*`, …), an alias map (`mjs`→`javascript`, `h`→`c`, …), then Shiki's bundled IDs and aliases.
   Grammars are **dynamically imported on first use**, so Vite code-splits each into its own chunk.
@@ -734,7 +740,7 @@ on each comment card. Its intro drops the line-number note for file-level commen
   trigger's `aria-label`, so it's `aria-hidden` rather than linked as a description. Used by the
   file list toolbar (hide viewed, hide tests, tree/list view) instead of native `title` tooltips.
 - **Icons** are Lucide SVG paths inlined in `components/icons.tsx` (ISC licence).
-- **Fonts:** Geist Sans and Geist Mono via `@fontsource-variable`.
+- **Fonts:** Geist Sans via `@fontsource-variable`; code uses the system monospace font, as GitHub does.
 - **Layout:** a CSS grid with a sticky app header, a sticky scrollable sidebar and a main column.
   File headers are sticky beneath the app header. File cards use `overflow: clip` (not `hidden`)
   so rounded corners clip their content without breaking `position: sticky`. The file list and

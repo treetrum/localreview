@@ -17,8 +17,8 @@ import {
   type DiffRow,
   type Span,
 } from "../lib/expand";
-import { lineTokens } from "../lib/highlight";
-import { intralineChanges, markTokens, type MarkedToken } from "../lib/intraline";
+import { lineTokens, type Token } from "../lib/highlight";
+import { intralineChanges, markTokens, tokenRuns, type MarkedToken } from "../lib/intraline";
 import { linePos, posKey, type ReviewComment, type Side } from "../lib/review";
 import { splitRows, type DiffView, type GapRow, type LineRow, type PairRow } from "../lib/rows";
 import type { ReviewActions } from "../lib/useReview";
@@ -547,18 +547,24 @@ function GapRowView({
 
 function Tokens({ tokens }: { tokens: MarkedToken[] }) {
   let offset = 0;
-  return tokens.map((token) => {
+  const spans = (run: Token[]) =>
+    run.map((token) => {
+      const start = offset;
+      offset += token.content.length;
+      return (
+        <span key={start} className="shiki-token" style={token.style}>
+          {token.content}
+        </span>
+      );
+    });
+  return tokenRuns(tokens).map((run) => {
     const start = offset;
-    offset += token.content.length;
-    const Tag = token.changed ? "mark" : "span";
-    return (
-      <Tag
-        key={start}
-        className={cx("shiki-token", token.changed && styles.changed)}
-        style={token.style}
-      >
-        {token.content}
-      </Tag>
+    return run.changed ? (
+      <mark key={start} className={styles.changed}>
+        {spans(run.tokens)}
+      </mark>
+    ) : (
+      spans(run.tokens)
     );
   });
 }
