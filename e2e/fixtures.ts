@@ -26,12 +26,16 @@ function createRepo(): Repo & { git: (...args: string[]) => void; remove: () => 
   return { root, git, write, remove: () => rmSync(root, { recursive: true, force: true }) };
 }
 
+/** Long enough to truncate in a file header; sorts after src/ so the file order is unchanged. */
+export const LONG_PATH =
+  "vendor/generated/clients/payments/trade-finance/advance-requests/forms/sections/payment-details/long.ts";
+
 /** Uncommitted and untracked changes, re-applied after every test. */
 function applyWorkingChanges(repo: Repo) {
   repo.write("README.md", "# Demo\n\nUncommitted line.\n");
   repo.write("notes/todo.txt", "remember\n");
   repo.write(
-    "src/long.ts",
+    LONG_PATH,
     Array.from({ length: LONG_LINES }, (_, i) => `export const n${i} = ${i};`).join("\n") + "\n",
   );
 }

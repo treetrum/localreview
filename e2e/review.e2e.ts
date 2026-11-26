@@ -1,4 +1,4 @@
-import { expect, test } from "./fixtures";
+import { expect, LONG_PATH, test } from "./fixtures";
 import type { Page } from "@playwright/test";
 
 const section = (page: Page, path: string) => page.getByRole("region", { name: path });
@@ -145,6 +145,20 @@ test("shows a tooltip below a file list toolbar button when hovering it", async 
 
   await button.click();
   await expect(tooltip).toBeHidden();
+});
+
+test("keeps a long path's file header on one line and truncates the path from the start", async ({
+  page,
+}) => {
+  const header = section(page, LONG_PATH).locator("header");
+  const heading = header.getByRole("heading", { name: LONG_PATH });
+  const viewed = header.getByRole("checkbox", { name: "Viewed" });
+  const [headingBox, viewedBox] = await Promise.all([heading.boundingBox(), viewed.boundingBox()]);
+  if (!headingBox || !viewedBox) throw new Error("header not laid out");
+  expect(
+    Math.abs(headingBox.y + headingBox.height / 2 - (viewedBox.y + viewedBox.height / 2)),
+  ).toBeLessThan(4);
+  expect(await heading.evaluate((el) => el.scrollWidth > el.clientWidth)).toBe(true);
 });
 
 test("scrolls long lines sideways in the unified view instead of wrapping them", async ({

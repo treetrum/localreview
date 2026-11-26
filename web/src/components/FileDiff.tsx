@@ -352,31 +352,33 @@ export const FileDiff = memo(function FileDiff({
       style={{ containIntrinsicSize: `auto ${estimate}px` }}
     >
       <header className={styles.header}>
-        <Button
-          variant="ghost"
-          size="icon-xs"
-          aria-label={collapsed ? "Expand file" : "Collapse file"}
-          aria-expanded={!collapsed}
-          onClick={() => toggleCollapsed(!collapsed)}
-        >
-          {collapsed ? <ChevronRight /> : <ChevronDown />}
-        </Button>
-        <FileStatusBadge status={file.status} />
-        <h2 className={styles.path} title={displayPath}>
-          {displayPath}
-        </h2>
-        <Button
-          variant="ghost"
-          size="icon-xs"
-          aria-label={pathCopied ? "Copied file path" : "Copy file path"}
-          title="Copy file path"
-          onClick={() => void copyPath(path)}
-        >
-          {pathCopied ? <Check size={14} /> : <Copy size={14} />}
-        </Button>
-        <span className={styles.stats}>
-          <span className={styles.additions}>+{file.additions}</span>
-          <span className={styles.deletions}>−{file.deletions}</span>
+        <span className={styles.title}>
+          <Button
+            variant="ghost"
+            size="icon-xs"
+            aria-label={collapsed ? "Expand file" : "Collapse file"}
+            aria-expanded={!collapsed}
+            onClick={() => toggleCollapsed(!collapsed)}
+          >
+            {collapsed ? <ChevronRight /> : <ChevronDown />}
+          </Button>
+          <FileStatusBadge status={file.status} />
+          <h2 className={styles.path} title={displayPath}>
+            <bdi>{displayPath}</bdi>
+          </h2>
+          <Button
+            variant="ghost"
+            size="icon-xs"
+            aria-label={pathCopied ? "Copied file path" : "Copy file path"}
+            title="Copy file path"
+            onClick={() => void copyPath(path)}
+          >
+            {pathCopied ? <Check size={14} /> : <Copy size={14} />}
+          </Button>
+          <span className={styles.stats}>
+            <span className={styles.additions}>+{file.additions}</span>
+            <span className={styles.deletions}>−{file.deletions}</span>
+          </span>
         </span>
         <span className={styles.headerActions}>
           {!collapsed && (expandable || expanded.length > 0) && (

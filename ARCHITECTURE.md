@@ -498,8 +498,9 @@ as outdated while whitespace is hidden.
   always revealed** (`commentSpans`), so a comment on an expanded line survives a reload and
   is only outdated if its line is gone from the file. `formatReview` uses the same rows, so the
   copied review agrees.
-- Expanded lines get a muted gutter. Below 760 px the file header's actions wrap onto their own
-  row so the path stays visible.
+- Expanded lines get a muted gutter. The file header stays on one line: only the path shrinks,
+  truncated from the start (an `rtl` box around a `<bdi>`) so the file name stays visible. Below
+  760 px the actions wrap onto their own row so the path has room.
 - **In the unified view long lines scroll sideways, they don't wrap.** The table sits in an
   `overflow-x: auto` wrapper that's also an inline-size container. The table keeps
   `table-layout: fixed` and is sized in `ch` from the longest line (tabs expanded), passed as
