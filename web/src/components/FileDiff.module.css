@@ -86,7 +86,7 @@
   text-align: center;
 }
 
-/* Long lines scroll sideways rather than wrap. A size container so comments can fit its width. */
+/* Unified lines scroll sideways rather than wrap. A size container so comments can fit its width. */
 .scroll {
   overflow-x: auto;
   container-type: inline-size;
@@ -247,19 +247,14 @@
   max-width: min(48rem, 100cqi - 8rem);
 }
 
-/* Each half is half the view, or wider if its own lines need it, so the other side isn't pushed off. */
+/* Split view wraps instead: two halves side by side leave too little room to scroll comfortably. */
 .split.table {
-  --old-width: max(50cqi - 3.5rem, (var(--old-ch) + 1.25) * 1ch + 1rem);
-  --new-width: max(50cqi - 3.5rem, (var(--new-ch) + 1.25) * 1ch + 1rem);
-  width: calc(7rem + var(--old-width) + var(--new-width));
+  width: 100%;
 }
 
-.oldCol {
-  width: var(--old-width);
-}
-
-.newCol {
-  width: var(--new-width);
+.split .code {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
 .split .stack {

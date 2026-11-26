@@ -142,7 +142,10 @@ test("shows a tooltip below a file list toolbar button when hovering it", async 
   await expect(tooltip).toBeHidden();
 });
 
-test("scrolls long lines sideways instead of wrapping them", async ({ page, repo }) => {
+test("scrolls long lines sideways in the unified view instead of wrapping them", async ({
+  page,
+  repo,
+}) => {
   repo.write("README.md", `# Demo\n\n${"word ".repeat(200)}end\n`);
   await page.getByRole("button", { name: "Refresh" }).click();
   const line = section(page, "README.md").getByRole("cell", { name: /word word/ });
@@ -153,6 +156,19 @@ test("scrolls long lines sideways instead of wrapping them", async ({ page, repo
   const scrollable = await scroller.evaluate((el) => el.scrollWidth > el.clientWidth);
   expect(scrollable).toBe(true);
   await expect(page.locator("html")).toHaveJSProperty("scrollWidth", page.viewportSize()!.width);
+});
+
+test("wraps long lines in the split view instead of scrolling", async ({ page, repo }) => {
+  repo.write("README.md", `# Demo\n\n${"word ".repeat(200)}end\n`);
+  await page.getByRole("button", { name: "Refresh" }).click();
+  await page.getByRole("button", { name: "Split view" }).click();
+  const line = section(page, "README.md").getByRole("cell", { name: /word word/ });
+  await expect(line).toBeVisible();
+  expect((await line.boundingBox())!.height).toBeGreaterThan(24);
+
+  const scroller = section(page, "README.md").locator("table").locator("..");
+  const scrollable = await scroller.evaluate((el) => el.scrollWidth > el.clientWidth);
+  expect(scrollable).toBe(false);
 });
 
 test("resizes the file list by dragging its edge and keeps the width after a reload", async ({
