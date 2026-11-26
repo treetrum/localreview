@@ -743,7 +743,7 @@ on each comment card. Its intro drops the line-number note for file-level commen
   trigger's `aria-label`, so it's `aria-hidden` rather than linked as a description. Used by the
   file list toolbar (hide viewed, hide tests, tree/list view) instead of native `title` tooltips.
 - **Icons** are Lucide SVG paths inlined in `components/icons.tsx` (ISC licence).
-- **Fonts:** Geist Sans via `@fontsource-variable`; code uses the system monospace font, as GitHub does.
+- **Fonts:** the system UI and monospace fonts, with the same stacks as GitHub; no web fonts.
 - **Layout:** a CSS grid with a sticky app header, a sticky scrollable sidebar and a main column.
   File headers are sticky beneath the app header. File cards use `overflow: clip` (not `hidden`)
   so rounded corners clip their content without breaking `position: sticky`. The file list and
